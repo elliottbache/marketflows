@@ -1,7 +1,3 @@
-import sys
-
-import pytest
-
 from marketflows import cli
 
 
