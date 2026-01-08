@@ -38,7 +38,7 @@ dev = [
 ]
 
 [project.scripts]
-marketflows = "marketflows.narrative_graphs:main"
+marketflows = "marketflows.cli:main"
 
 [tool.setuptools]
 # Tell setuptools that packages live under `src/`
