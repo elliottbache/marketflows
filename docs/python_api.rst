@@ -5,4 +5,3 @@ Python API
    :toctree: _autosummary
    :recursive:
 
-   src.marketflows.narrative_graphs
