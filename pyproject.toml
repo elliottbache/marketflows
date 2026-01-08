@@ -28,11 +28,11 @@ dev = [
   "sphinx_rtd_theme",
   "myst-parser>=3.0",
   "pre-commit",
-  "ruff",
+  "ruff==v0.14.10",
   "black==25.12.0",  # same as pre-commit
   "isort",
-  "mypy",
-  "codespell",
+  "mypy==v1.13.0",
+  "codespell==v2.4.1",
   "pytest-cov",
   "pandas-stubs",
 ]

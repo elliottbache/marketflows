@@ -40,7 +40,7 @@ deps:
 
 .PHONY: ci
 ci: install-dev
-	$(ACTIVATE); ruff check -I -.
+	$(ACTIVATE); ruff check .
 	$(ACTIVATE); black --check --diff .
 	$(ACTIVATE); codespell
 	$(ACTIVATE); mypy
@@ -65,7 +65,7 @@ docs: install-dev
 
 .PHONY: lint
 lint: install-dev
-	$(ACTIVATE); ruff check --select I .
+	$(ACTIVATE); ruff check .
 	$(ACTIVATE); black --check --diff .
 	$(ACTIVATE); codespell
 
