@@ -1,7 +1,12 @@
 def main() -> int:
+
     pass  # eraseme once this function has logic in it
     pass  # eraseme once this function has logic in it
     pass  # eraseme once this function has logic in it
+
+    # parse args
+
+    # call function to run pipeline
 
     return 0
 
