@@ -28,6 +28,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.napoleon",
+    "sphinx_autodoc_typehints"
 ]
 
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
@@ -44,6 +45,12 @@ autodoc_default_options = {
     # "undoc-members": True,  # avoid error in dataclass where members are documented twice
     "show-inheritance": True,
 }
+
+# Explicitly show default values in the argument list
+autodoc_preserve_defaults = True
+
+# Show defaults in Args list
+typehints_defaults = "comma"
 
 # make header anchors be automatically created from headers
 myst_heading_anchors = 3
