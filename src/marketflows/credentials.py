@@ -17,10 +17,10 @@ def read_api_key(api_key_path: Path | None = None) -> str:
     only contain the API key and nothing else.
 
     Args:
-        api_key_path  (Path, optional): the API key path. Defaults to None.
+        api_key_path: the API key path.
 
     Returns:
-         (str): the API key, removing leading and trailing whitespace.
+         the API key, removing leading and trailing whitespace.
 
     Raises:
         FileNotFoundError: If the file does not exist.
