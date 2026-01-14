@@ -28,7 +28,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.napoleon",
-    "sphinx_autodoc_typehints"
+    "sphinx_autodoc_typehints",
 ]
 
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
