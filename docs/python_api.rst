@@ -5,5 +5,4 @@ Python API
    :toctree: _autosummary
    :recursive:
 
-   marketflows.credentials
    marketflows.providers
