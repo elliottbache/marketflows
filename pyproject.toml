@@ -17,6 +17,7 @@ keywords = ["narratives", "capital", "flows"]
 # Runtime deps
 dependencies = [
   "pandas>=2.0",
+  "requests"
 ]
 
 # Optional extras for dev tools
@@ -35,6 +36,8 @@ dev = [
   "codespell==v2.4.1",
   "pytest-cov",
   "pandas-stubs",
+  "types-requests",
+  "requests-mock",
 ]
 
 [project.scripts]
