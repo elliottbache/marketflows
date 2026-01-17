@@ -1,6 +1,6 @@
 import pytest
 
-from marketflows import credentials
+from marketflows.providers import _credentials
 
 
 class TestReadApiKey:
@@ -11,7 +11,7 @@ class TestReadApiKey:
         p.write_text(api_key)
 
         # check that we read the same api_key from the file
-        assert credentials.read_api_key(tmp_path / "api_key.txt") == api_key.strip()
+        assert _credentials.read_api_key(tmp_path / "api_key.txt") == api_key.strip()
 
     @pytest.mark.parametrize(
         "api_key, api_key_file, exc, exc_text",
@@ -36,4 +36,4 @@ class TestReadApiKey:
 
         # check that we read the same api_key from the file
         with pytest.raises(exc, match=exc_text):
-            credentials.read_api_key(tmp_path / api_key_file)
+            _credentials.read_api_key(tmp_path / api_key_file)
