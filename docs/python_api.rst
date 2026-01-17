@@ -6,3 +6,4 @@ Python API
    :recursive:
 
    marketflows.credentials
+   marketflows.providers
