@@ -4,7 +4,7 @@ Run pipeline to query providers, analyze data, and create graphs.
 
 from pathlib import Path
 
-from marketflows.credentials import read_api_key
+from marketflows.providers._credentials import read_api_key
 
 # render_outputs
 
@@ -13,8 +13,6 @@ from marketflows.credentials import read_api_key
 def change_this_name_and_add_docstring() -> None:
 
     # read config: load_and_validate_config
-
-    # read API key from file: read_api_key
 
     api_key_path = Path.cwd()  # ERASE THIS LINE!!!
     api_key = read_api_key(api_key_path)
