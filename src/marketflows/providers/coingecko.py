@@ -8,6 +8,7 @@ from typing import Any, cast
 import requests
 
 from marketflows.config import ProviderConfig
+from marketflows.types import AssetMarketCaps
 
 COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/coins"
 _MAX_COINS_PER_PAGE = 250  # maximum possible on CoinGecko
@@ -20,7 +21,6 @@ _DEFAULT_N_TOP_NARRATIVE_COINS = 10  # number of coins to use when defining narr
 # complex types
 CoinList = list[dict[str, str | float]]
 CoinChart = dict[str, list[list[float]]]
-CoinMarketCaps = dict[str, dict[str, list[float]]]
 
 
 @dataclass
@@ -43,7 +43,7 @@ def load_coingecko_data(
     *,
     api_key: str,
     provider_config: ProviderConfig,
-) -> tuple[CoinMarketCaps, dict[str, str]]:
+) -> tuple[AssetMarketCaps, dict[str, str], dict[str, set[str]]]:
     """Entrypoint for all CoinGecko data querying.
 
     For the designated flow type, this will query CoinGecko for the necessary data.
@@ -53,7 +53,8 @@ def load_coingecko_data(
         provider_config: configuration values for the providers
 
     Returns:
-        CoinGecko market cap data for all requested coins and symbol for each coin
+        CoinGecko market cap data for all requested coins, symbol for each coin, and
+            a set of coins in each narrative
 
     Raises:
         ValueError: if flow_type is not yet implemented
@@ -88,6 +89,7 @@ def load_coingecko_data(
                 continue
 
             elif flow_type == "narratives":
+                all_narrative_coins = {}
                 for narrative in narratives:
                     url_data = _define_url_narrative(narrative)
                     coin_data = _query_coins(session, url_data=url_data)
@@ -99,6 +101,7 @@ def load_coingecko_data(
                     )
                     coins.update(narrative_coins)
                     symbols.update(narrative_symbols)
+                    all_narrative_coins[narrative] = narrative_coins
 
             elif flow_type == "market_cap_ranges":
                 range_coins, range_symbols = _read_mcs_above_limit(
@@ -117,9 +120,10 @@ def load_coingecko_data(
             coin_data_dict = _expect_dict(coin_data)
             if not coin_data_dict or not coin_data_dict.get("market_caps"):
                 raise ValueError(f"Missing data for {coin}.")
-            coin_mcs[coin] = _create_lists_from_chart_data(coin_data_dict)
+            time_and_mcs = _create_lists_from_chart_data(coin_data_dict)
+            coin_mcs[coin] = _remove_faulty_data(time_and_mcs)
 
-    return coin_mcs, symbols
+    return coin_mcs, symbols, all_narrative_coins
 
 
 def _parse_coins_from_groups(coin_groups: dict[str, list[str]]) -> set[str]:
@@ -265,14 +269,14 @@ def _expect_dict(coin_data: CoinList | CoinChart) -> CoinChart:
 
 def _parse_coins_and_symbols(
     data: CoinList,
-) -> tuple[list[str], dict[str, str]]:
-    """Parse json data from CoinGecko and create coins list and symbols dict."""
-    coins = list()
+) -> tuple[set[str], dict[str, str]]:
+    """Parse json data from CoinGecko and create coins set and symbols dict."""
+    coins = set()
     symbols = dict()
     for coin in data:
         coin_id = cast(str, coin["id"])
         coin_symbol = cast(str, coin["symbol"])
-        coins.append(coin_id)
+        coins.add(coin_id)
         symbols[coin_id] = coin_symbol
 
     return coins, symbols
@@ -456,3 +460,23 @@ def _create_lists_from_chart_data(
     timestamps_and_market_caps = coin_data["market_caps"]
     timestamps, market_caps = zip(*timestamps_and_market_caps, strict=True)
     return {"timestamps": list(timestamps), "market_caps": list(market_caps)}
+
+
+def _remove_faulty_data(data: dict[str, list[float]]) -> dict[str, list[float]]:
+    """Take timestamps and market caps and remove any that is NaN or <= 0."""
+    timestamps, market_caps = map(
+        list,
+        zip(
+            *[
+                (a, b)
+                for a, b in zip(data["timestamps"], data["market_caps"], strict=True)
+                if _is_number(a) and _is_number(b)
+            ],
+            strict=True,
+        ),
+    )
+    number_data = dict()
+    number_data["timestamps"] = timestamps
+    number_data["market_caps"] = market_caps
+
+    return number_data

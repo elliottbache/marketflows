@@ -157,11 +157,11 @@ def test_load_coingecko_data(
     provider_config = ProviderConfig(
         days, flow_types, base_coins, narratives, range_lower_limits, coin_groups
     )
-    coin_mcs, symbols = coingecko.load_coingecko_data(
+    coin_mcs, symbols, narrative_coins = coingecko.load_coingecko_data(
         api_key=coingecko_api_key, provider_config=provider_config
     )
 
-    # check output dict
+    # check function outputs
     assert len(coin_mcs) == len(final_list)
     assert len(symbols) == len(final_list)
     for coin in final_list:
@@ -171,6 +171,10 @@ def test_load_coingecko_data(
         assert "market_caps" in coin_mcs[coin]
         assert len(coin_mcs[coin]["market_caps"]) == days
         assert len(coin_mcs[coin]["timestamps"]) == days
+    assert len(narrative_coins) == len(narratives)
+    assert len(narrative_coins[narratives[0]]) == len(markets_response1)
+    for coin in markets_response1:
+        assert coin["id"] in narrative_coins[narratives[0]]
 
     # check params for markets calls
     history = markets_adapter.request_history
@@ -388,7 +392,7 @@ class TestQueryCoins:
 
 def test_parse_coins_and_symbols_success(coins_list_response):
     coins, symbols = coingecko._parse_coins_and_symbols(coins_list_response)
-    assert coins == ["0chain", "01coin"]
+    assert coins == {"0chain", "01coin"}
     assert symbols["0chain"] == "zcn"
     assert symbols["01coin"] == "zoc"
 
@@ -578,3 +582,12 @@ def test_create_lists_from_chart_data_success():
         1401370211582.37,
         1355701979725.16,
     ]
+
+
+def test_remove_faulty_data_success():
+    data = {
+        "timestamps": [1, 2, "NaN", "false", 5],
+        "market_caps": [{}, 200, 300, "four", 500],
+    }
+    correct_data = coingecko._remove_faulty_data(data)
+    assert correct_data == {"timestamps": [2, 5], "market_caps": [200, 500]}
