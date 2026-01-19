@@ -3,6 +3,7 @@ import copy
 import pytest
 import requests
 
+from marketflows.config import ProviderConfig
 from marketflows.providers import coingecko
 
 
@@ -153,14 +154,11 @@ def test_load_coingecko_data(
         )
 
     # call tested function
+    provider_config = ProviderConfig(
+        days, flow_types, base_coins, narratives, range_lower_limits, coin_groups
+    )
     coin_mcs, symbols = coingecko.load_coingecko_data(
-        api_key=coingecko_api_key,
-        days=days,
-        flow_types=flow_types,
-        base_coins=base_coins,
-        coin_groups=coin_groups,
-        narratives=narratives,
-        range_lower_limits=range_lower_limits,
+        api_key=coingecko_api_key, provider_config=provider_config
     )
 
     # check output dict

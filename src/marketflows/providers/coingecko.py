@@ -7,7 +7,7 @@ from typing import Any, cast
 
 import requests
 
-from marketflows.types import FlowType
+from marketflows.config import ProviderConfig
 
 COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/coins"
 _MAX_COINS_PER_PAGE = 250  # maximum possible on CoinGecko
@@ -15,6 +15,7 @@ _DEFAULT_REQUEST_TIMEOUT = 5  # request should not take this long
 _DEFAULT_REQUEST_RESET = 60  # time passed until request limit is reset
 _DEFAULT_NON_200_SLEEP = 2  # time until next request if non-200 is returned
 COINGECKO_HEADER_KEY_API = "x-cg-demo-api-key"  # key in headers dict for API key
+_DEFAULT_N_TOP_NARRATIVE_COINS = 10  # number of coins to use when defining narrative
 
 # complex types
 CoinList = list[dict[str, str | float]]
@@ -41,12 +42,7 @@ logger = logging.getLogger(__name__)
 def load_coingecko_data(
     *,
     api_key: str,
-    days: int,
-    flow_types: list[FlowType],
-    base_coins: list[str],
-    coin_groups: dict[str, list[str]],
-    narratives: list[str],
-    range_lower_limits: list[float],
+    provider_config: ProviderConfig,
 ) -> tuple[CoinMarketCaps, dict[str, str]]:
     """Entrypoint for all CoinGecko data querying.
 
@@ -54,15 +50,7 @@ def load_coingecko_data(
 
     Args:
         api_key: CoinGecko API key
-        days: number of days of data to download
-        flow_types: CoinGecko flow types list (narratives, market_cap_ranges,
-            individual_assets)
-        base_coins: coins used as base currency (e.g. bitcoin for ETHBTC, LTCBTC,
-            ethereum for SOLETH, BNBETH).  USD is already implicitly added.
-        coin_groups: groups of coins as would be the case for multiple portfolios
-            containing (often) different coins
-        narratives: list of narratives to be graphed
-        range_lower_limits: the lower limits of each of the ranges
+        provider_config: configuration values for the providers
 
     Returns:
         CoinGecko market cap data for all requested coins and symbol for each coin
@@ -70,13 +58,21 @@ def load_coingecko_data(
     Raises:
         ValueError: if flow_type is not yet implemented
     """
+    days = provider_config.days
+    flow_types = provider_config.flow_types
+    base_coins = provider_config.base_assets
+    narratives = provider_config.narratives
+    range_lower_limits = provider_config.range_lower_limits
+    coin_groups = provider_config.asset_groups
 
     coins = set()
     symbols = dict()
 
     # open a session for CoinGecko
     with requests.Session() as session:
-        session.headers.update({COINGECKO_HEADER_KEY_API: api_key})
+        session.headers.update(
+            {"accept": "application/json", COINGECKO_HEADER_KEY_API: api_key}
+        )
 
         # add all base and individual assets to coins set
         if base_coins:
@@ -95,7 +91,9 @@ def load_coingecko_data(
                 for narrative in narratives:
                     url_data = _define_url_narrative(narrative)
                     coin_data = _query_coins(session, url_data=url_data)
-                    coin_data_list = _expect_list(coin_data)
+                    coin_data_list = _expect_list(coin_data)[
+                        :_DEFAULT_N_TOP_NARRATIVE_COINS
+                    ]
                     narrative_coins, narrative_symbols = _parse_coins_and_symbols(
                         coin_data_list
                     )
@@ -188,8 +186,8 @@ def _query_coins(
 
     Returns:
         either a list of coins, each a dict with id and symbol, or a dict where
-            value is a list of 2-element lists (each has the Unix timestamp and
-            price/market cap/etc)
+            value is a list of 2-element lists (each has the Unix timestamp
+            (in milliseconds) and price/market cap/etc)
 
     Raise:
         TimeoutError if ``2*_DEFAULT_REQUEST_RESET`` goes by
@@ -200,6 +198,9 @@ def _query_coins(
     start_time = time.time()
     while True:
         try:
+            logger.info(
+                f"Querying CoinGecko URL={url_data.url}, with params={url_data.params}"
+            )
             response = session.get(
                 url_data.url,
                 params=url_data.params,
@@ -207,7 +208,7 @@ def _query_coins(
             )
 
             if response.status_code == 429:
-                logger.warning(f"Rate limit reached.  Waiting {request_reset}.")
+                logger.warning(f"Rate limit reached.  Waiting {request_reset} seconds.")
                 time.sleep(request_reset)
                 continue
 
@@ -445,7 +446,7 @@ def _create_lists_from_chart_data(
     coin_data: CoinChart,
 ) -> dict[str, list[float]]:
     """Take historical chart data from CoinGecko and convert to a dict with ``timestamp``
-    and ``market_caps`` lists of all the data.
+    and ``market_caps`` lists of all the data.  Timestamps are in milliseconds.
 
     Examples:
         >>> d = {"market_caps": [[1.0, 10.0], [2.0, 12.0]]}

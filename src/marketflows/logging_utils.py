@@ -48,6 +48,8 @@ def _default_log_dir() -> pathlib.Path:
     log_dir = base / "marketflows" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
 
+    print(f"\nLogging to {log_dir}")
+
     return log_dir
 
 
