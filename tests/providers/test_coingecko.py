@@ -1,5 +1,6 @@
 import copy
 
+import pandas as pd
 import pytest
 import requests
 
@@ -144,9 +145,9 @@ def test_load_coingecko_data(
     for icoin, coin in enumerate(final_list):
         chart_response = copy.deepcopy(base_chart_response)
         for idx in range(3):
-            chart_response["market_caps"][idx][1] = (
-                base_chart_response["market_caps"][idx][1] * icoin
-            )
+            chart_response["market_caps"][idx][1] = base_chart_response["market_caps"][
+                idx
+            ][1] * (icoin + 1)
         chart_adapter[coin] = requests_mock.get(
             f"{coingecko.COINGECKO_BASE_URL}/{coin}/market_chart",
             status_code=200,
@@ -550,7 +551,7 @@ def test_define_url_coin_chart_success(coingecko_api_key, coin):
     assert url_params.params == {"vs_currency": "usd", "days": str(days)}
 
 
-def test_create_lists_from_chart_data_success():
+def test_create_df_from_chart_data_success():
     coin_data = {
         "prices": [
             [1711843200001, 69702.3087473573],
@@ -570,24 +571,26 @@ def test_create_lists_from_chart_data_success():
     }
 
     # call the tested function
-    coin_data_lists = coingecko._create_lists_from_chart_data(coin_data)
+    coin_data_df = coingecko._create_df_from_chart_data(coin_data)
 
-    assert coin_data_lists["timestamps"] == [
-        1711843200000,
-        1711929600000,
-        1711983682000,
-    ]
-    assert coin_data_lists["market_caps"] == [
-        1370247487960.09,
-        1401370211582.37,
-        1355701979725.16,
-    ]
+    assert coin_data_df["timestamps"].equals(
+        pd.Series([1711843200000, 1711929600000, 1711983682000])
+    )
+    assert coin_data_df["market_caps"].equals(
+        pd.Series([1370247487960.09, 1401370211582.37, 1355701979725.16])
+    )
 
 
 def test_remove_faulty_data_success():
-    data = {
-        "timestamps": [1, 2, "NaN", "false", 5],
-        "market_caps": [{}, 200, 300, "four", 500],
-    }
+    data = pd.DataFrame(
+        {
+            "timestamps": [1, 2, "NaN", "false", 5],
+            "market_caps": [{}, 200, 300, "four", 500],
+        }
+    )
     correct_data = coingecko._remove_faulty_data(data)
-    assert correct_data == {"timestamps": [2, 5], "market_caps": [200, 500]}
+    assert correct_data.equals(
+        pd.DataFrame(
+            {"timestamps": [2.0, 5.0], "market_caps": [200.0, 500.0]}, index=[1, 4]
+        )
+    )
