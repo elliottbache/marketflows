@@ -5,10 +5,10 @@ import time
 from dataclasses import dataclass
 from typing import Any, cast
 
+import pandas as pd
 import requests
 
 from marketflows.config import ProviderConfig
-from marketflows.types import AssetMarketCaps
 
 COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/coins"
 _MAX_COINS_PER_PAGE = 250  # maximum possible on CoinGecko
@@ -43,10 +43,11 @@ def load_coingecko_data(
     *,
     api_key: str,
     provider_config: ProviderConfig,
-) -> tuple[AssetMarketCaps, dict[str, str], dict[str, set[str]]]:
+) -> tuple[dict[str, pd.DataFrame], dict[str, str], dict[str, set[str]]]:
     """Entrypoint for all CoinGecko data querying.
 
-    For the designated flow type, this will query CoinGecko for the necessary data.
+    This will query CoinGecko for all the necessary chart data.  Bitcoin will be
+    added to subsequently be used as the base currency from timestamps.
 
     Args:
         api_key: CoinGecko API key
@@ -80,6 +81,10 @@ def load_coingecko_data(
             coins.update(base_coins)
         if "individual_assets" in flow_types:
             coins.update(_parse_coins_from_groups(coin_groups))
+
+        # add bitcoin since this will be used as base currency for timestamps
+        coins.update(["bitcoin"])
+
         if coins:
             symbols.update(_add_symbols_from_ids(coins, session=session))
 
@@ -113,6 +118,7 @@ def load_coingecko_data(
             else:
                 raise ValueError(f"Unknown flow type {flow_type}")
 
+        # query CoinGecko for the chart history of each of the coins previously defined
         coin_mcs = dict()
         for coin in coins:
             url_data = _define_url_coin_chart(coin, days=days)
@@ -120,8 +126,12 @@ def load_coingecko_data(
             coin_data_dict = _expect_dict(coin_data)
             if not coin_data_dict or not coin_data_dict.get("market_caps"):
                 raise ValueError(f"Missing data for {coin}.")
-            time_and_mcs = _create_lists_from_chart_data(coin_data_dict)
+
+            time_and_mcs = _create_df_from_chart_data(coin_data_dict)
             coin_mcs[coin] = _remove_faulty_data(time_and_mcs)
+
+            # UNCOMMENT THESE LINES TO CREATE RAW DATA FILES FOR DEBUGGING
+            # time_and_mcs.to_csv(f"raw_data_{coin}.csv", index=False)
 
     return coin_mcs, symbols, all_narrative_coins
 
@@ -446,37 +456,32 @@ def _define_url_coin_chart(coin: str, *, days: int = 365) -> GetValues:
     return GetValues(url, params)
 
 
-def _create_lists_from_chart_data(
+def _create_df_from_chart_data(
     coin_data: CoinChart,
-) -> dict[str, list[float]]:
-    """Take historical chart data from CoinGecko and convert to a dict with ``timestamp``
-    and ``market_caps`` lists of all the data.  Timestamps are in milliseconds.
+) -> pd.DataFrame:
+    """Take historical chart data from CoinGecko and convert to a DataFrame with
+    ``timestamp`` and ``market_caps`` lists of all the data.  Timestamps are in
+     milliseconds.
 
     Examples:
         >>> d = {"market_caps": [[1.0, 10.0], [2.0, 12.0]]}
-        >>> _create_lists_from_chart_data(d)
-        {'timestamps': [1.0, 2.0], 'market_caps': [10.0, 12.0]}
+        >>> _create_df_from_chart_data(d)
+           timestamps  market_caps
+        0         1.0         10.0
+        1         2.0         12.0
     """
     timestamps_and_market_caps = coin_data["market_caps"]
     timestamps, market_caps = zip(*timestamps_and_market_caps, strict=True)
-    return {"timestamps": list(timestamps), "market_caps": list(market_caps)}
 
-
-def _remove_faulty_data(data: dict[str, list[float]]) -> dict[str, list[float]]:
-    """Take timestamps and market caps and remove any that is NaN or <= 0."""
-    timestamps, market_caps = map(
-        list,
-        zip(
-            *[
-                (a, b)
-                for a, b in zip(data["timestamps"], data["market_caps"], strict=True)
-                if _is_number(a) and _is_number(b)
-            ],
-            strict=True,
-        ),
+    return pd.DataFrame(
+        {"timestamps": list(timestamps), "market_caps": list(market_caps)}
     )
-    number_data = dict()
-    number_data["timestamps"] = timestamps
-    number_data["market_caps"] = market_caps
 
-    return number_data
+
+def _remove_faulty_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Take timestamps and market caps and remove any rows that contain NaN or <= 0."""
+    df = df.apply(pd.to_numeric, errors="coerce")
+    df = df.dropna()
+    df = df[(df > 0).all(axis=1)]
+
+    return df

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from marketflows.types import FlowType
 
+
 @dataclass
 class ProviderConfig:
     """Create a dataclass to hold the configuration values for the providers.
@@ -16,12 +17,14 @@ class ProviderConfig:
         asset_groups (dict[str, list[str]]): groups of assets as would be the case for multiple portfolios
             containing (often) different assets
     """
+
     days: int
     flow_types: list[FlowType]
     base_assets: list[str]
     narratives: list[str]
     range_lower_limits: list[float]
     asset_groups: dict[str, list[str]]
+
 
 # function to tie all other config functions together: load_and_validate_config
 
