@@ -47,15 +47,15 @@ def load_coingecko_data(
     """Entrypoint for all CoinGecko data querying.
 
     This will query CoinGecko for all the necessary chart data.  Bitcoin will be
-    added to subsequently be used as the base currency from timestamps.
+    inserted at position 0 to subsequently be used as the base currency from timestamps.
 
     Args:
         api_key: CoinGecko API key
         provider_config: configuration values for the providers
 
     Returns:
-        CoinGecko market cap data for all requested coins, symbol for each coin, and
-            a set of coins in each narrative
+        CoinGecko market cap data for all requested coins (bitcoin is first), symbol
+        for each coin, and a set of coins in each narrative
 
     Raises:
         ValueError: if flow_type is not yet implemented
@@ -81,9 +81,6 @@ def load_coingecko_data(
             coins.update(base_coins)
         if "individual_assets" in flow_types:
             coins.update(_parse_coins_from_groups(coin_groups))
-
-        # add bitcoin since this will be used as base currency for timestamps
-        coins.update(["bitcoin"])
 
         if coins:
             symbols.update(_add_symbols_from_ids(coins, session=session))
@@ -118,9 +115,15 @@ def load_coingecko_data(
             else:
                 raise ValueError(f"Unknown flow type {flow_type}")
 
+        # create list from coins set with bitcoin in first place
+        coins -= {"bitcoin"}
+        coin_list = ["bitcoin"]
+        coin_list.extend(coins)
+        symbols["bitcoin"] = "btc"
+
         # query CoinGecko for the chart history of each of the coins previously defined
         coin_mcs = dict()
-        for coin in coins:
+        for coin in coin_list:
             url_data = _define_url_coin_chart(coin, days=days)
             coin_data = _query_coins(session, url_data=url_data)
             coin_data_dict = _expect_dict(coin_data)
