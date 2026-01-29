@@ -602,8 +602,8 @@ def test_remove_faulty_data_success():
     [
         (0.3, "5min", 1, 30000),
         (1, "5min", 1, 30000),
-        (2, "h", 2, 30000),
-        (90, "h", 90, 30000),
+        (2, "h", 2, 3600000),
+        (90, "h", 90, 3600000),
         (187, "D", 187, 8.64e10),
         (367, "D", 365, 8.64e10),
     ],
@@ -613,6 +613,7 @@ def test_define_frequency_min_and_max_timestamp_success(days, freq, days_ago, ms
     provider_config = ProviderConfig(days, list(), list(), list(), list(), dict())
     frequency, min_timestamp, max_timestamp\
         = coingecko.define_frequency_min_and_max_timestamp(provider_config)
+
     assert frequency == freq
     assert min_timestamp == pytest.approx(
         (datetime.now(UTC) - timedelta(days=days_ago)).timestamp() * 1000,

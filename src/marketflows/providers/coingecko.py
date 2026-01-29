@@ -128,7 +128,7 @@ def load_coingecko_data(
             coin_mcs[coin] = _remove_faulty_data(time_and_mcs)
 
             # UNCOMMENT THESE LINES TO CREATE RAW DATA FILES FOR DEBUGGING
-            time_and_mcs.to_csv(f"raw_data_{coin}.csv", index=False)
+            # time_and_mcs.to_csv(f"raw_data_{coin}.csv", index=False)
 
     return coin_mcs, symbols, all_narrative_coins
 
@@ -514,18 +514,23 @@ def define_frequency_min_and_max_timestamp(
             " is set to 5 minutes."
         )
         freq = "5min"
+        min_datetime = now - timedelta(days=1)
         min_timestamp = (
-            now - timedelta(days=1)
-        ).timestamp() * 1000
+            min_datetime.replace(second=0, microsecond=0).timestamp()
+            * 1000
+        )
+
     elif provider_config.days <= 90:
         logger.info(
             f"CoinGecko data collection time span is {provider_config.days}"
             f" days and the frequency is set to 1 hour."
         )
         freq = "h"
+        min_datetime = now - timedelta(days=provider_config.days)
         min_timestamp = (
-            now - timedelta(days=provider_config.days)
-        ).timestamp() * 1000
+            min_datetime.replace(minute=0, second=0, microsecond=0).timestamp()
+            * 1000
+        )
     elif provider_config.days < 365:
         logger.info(
             f"CoinGecko data collection time span is {provider_config.days}"
