@@ -484,10 +484,10 @@ def _remove_faulty_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def define_frequency_and_min_timestamp(
+def define_frequency_min_and_max_timestamp(
     provider_config: ProviderConfig,
 ) -> tuple[str, float]:
-    """Define the frequency and minimum timestamp retrieved from CoinGecko.
+    """Define the frequency, minimum, and maximum timestamp retrieved from CoinGecko.
 
     Time spans that are lower than 1 day are set to 1 day.  Time spans that are higher
     than 365 days are set to 365 days.  Otherwise:
@@ -500,13 +500,14 @@ def define_frequency_and_min_timestamp(
         provider_config: CoinGecko configuration including ``days``
 
     Returns:
-        the frequency and minimum timestamp
+        the frequency, minimum timestamp, and maximum timestamp
     """
     if provider_config.days < 1:
         logger.warning(
             "CoinGecko data collection time span is too low and is changed " "to 1 day."
         )
 
+    now = datetime.now(UTC)
     if provider_config.days <= 1:
         logger.info(
             "CoinGecko data collection time span is 1 day and the frequency "
@@ -514,7 +515,7 @@ def define_frequency_and_min_timestamp(
         )
         freq = "5min"
         min_timestamp = (
-            datetime.now(UTC) - timedelta(days=1)
+            now - timedelta(days=1)
         ).timestamp() * 1000
     elif provider_config.days <= 90:
         logger.info(
@@ -523,7 +524,7 @@ def define_frequency_and_min_timestamp(
         )
         freq = "h"
         min_timestamp = (
-            datetime.now(UTC) - timedelta(days=provider_config.days)
+            now - timedelta(days=provider_config.days)
         ).timestamp() * 1000
     elif provider_config.days < 365:
         logger.info(
@@ -531,7 +532,7 @@ def define_frequency_and_min_timestamp(
             f" days and the frequency is set to 1 day."
         )
         freq = "D"
-        min_datetime = datetime.now(UTC) - timedelta(days=provider_config.days)
+        min_datetime = now - timedelta(days=provider_config.days)
         min_timestamp = (
             min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
             * 1000
@@ -542,10 +543,10 @@ def define_frequency_and_min_timestamp(
             "days and the frequency is set to 1 day."
         )
         freq = "D"
-        min_datetime = datetime.now(UTC) - timedelta(days=provider_config.days)
+        min_datetime = now - timedelta(days=provider_config.days)
         min_timestamp = (
             min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
             * 1000
         )
 
-    return freq, min_timestamp
+    return freq, min_timestamp, now.timestamp() * 1000
