@@ -3,6 +3,7 @@
 import logging
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta, UTC
 from typing import Any, cast
 
 import pandas as pd
@@ -46,15 +47,14 @@ def load_coingecko_data(
 ) -> tuple[dict[str, pd.DataFrame], dict[str, str], dict[str, set[str]]]:
     """Entrypoint for all CoinGecko data querying.
 
-    This will query CoinGecko for all the necessary chart data.  Bitcoin will be
-    inserted at position 0 to subsequently be used as the base currency from timestamps.
+    This will query CoinGecko for all the necessary chart data.
 
     Args:
         api_key: CoinGecko API key
         provider_config: configuration values for the providers
 
     Returns:
-        CoinGecko market cap data for all requested coins (bitcoin is first), symbol
+        CoinGecko market cap data for all requested coins, symbol
         for each coin, and a set of coins in each narrative
 
     Raises:
@@ -115,15 +115,9 @@ def load_coingecko_data(
             else:
                 raise ValueError(f"Unknown flow type {flow_type}")
 
-        # create list from coins set with bitcoin in first place
-        coins -= {"bitcoin"}
-        coin_list = ["bitcoin"]
-        coin_list.extend(coins)
-        symbols["bitcoin"] = "btc"
-
         # query CoinGecko for the chart history of each of the coins previously defined
         coin_mcs = dict()
-        for coin in coin_list:
+        for coin in coins:
             url_data = _define_url_coin_chart(coin, days=days)
             coin_data = _query_coins(session, url_data=url_data)
             coin_data_dict = _expect_dict(coin_data)
@@ -134,7 +128,7 @@ def load_coingecko_data(
             coin_mcs[coin] = _remove_faulty_data(time_and_mcs)
 
             # UNCOMMENT THESE LINES TO CREATE RAW DATA FILES FOR DEBUGGING
-            # time_and_mcs.to_csv(f"raw_data_{coin}.csv", index=False)
+            time_and_mcs.to_csv(f"raw_data_{coin}.csv", index=False)
 
     return coin_mcs, symbols, all_narrative_coins
 
@@ -488,3 +482,70 @@ def _remove_faulty_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df[(df > 0).all(axis=1)]
 
     return df
+
+
+def define_frequency_and_min_timestamp(
+    provider_config: ProviderConfig,
+) -> tuple[str, float]:
+    """Define the frequency and minimum timestamp retrieved from CoinGecko.
+
+    Time spans that are lower than 1 day are set to 1 day.  Time spans that are higher
+    than 365 days are set to 365 days.  Otherwise:
+        - 1 day: 5-minutely data
+        - 1 < days <= 90 days: hourly data
+        - > 90 days: daily data (00:00 UTC)
+    Daily data is published at 00:10 UTC for 00:00 UTC.
+
+    Args:
+        provider_config: CoinGecko configuration including ``days``
+
+    Returns:
+        the frequency and minimum timestamp
+    """
+    if provider_config.days < 1:
+        logger.warning(
+            "CoinGecko data collection time span is too low and is changed " "to 1 day."
+        )
+
+    if provider_config.days <= 1:
+        logger.info(
+            "CoinGecko data collection time span is 1 day and the frequency "
+            " is set to 5 minutes."
+        )
+        freq = "5min"
+        min_timestamp = (
+            datetime.now(UTC) - timedelta(days=1)
+        ).timestamp() * 1000
+    elif provider_config.days <= 90:
+        logger.info(
+            f"CoinGecko data collection time span is {provider_config.days}"
+            f" days and the frequency is set to 1 hour."
+        )
+        freq = "h"
+        min_timestamp = (
+            datetime.now(UTC) - timedelta(days=provider_config.days)
+        ).timestamp() * 1000
+    elif provider_config.days < 365:
+        logger.info(
+            f"CoinGecko data collection time span is {provider_config.days}"
+            f" days and the frequency is set to 1 day."
+        )
+        freq = "D"
+        min_datetime = datetime.now(UTC) - timedelta(days=provider_config.days)
+        min_timestamp = (
+            min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+            * 1000
+        )
+    else:
+        logger.info(
+            "CoinGecko data collection time span is 365 "
+            "days and the frequency is set to 1 day."
+        )
+        freq = "D"
+        min_datetime = datetime.now(UTC) - timedelta(days=provider_config.days)
+        min_timestamp = (
+            min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+            * 1000
+        )
+
+    return freq, min_timestamp

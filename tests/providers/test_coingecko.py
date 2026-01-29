@@ -1,4 +1,5 @@
 import copy
+from datetime import datetime, timedelta, UTC
 
 import pandas as pd
 import pytest
@@ -593,4 +594,28 @@ def test_remove_faulty_data_success():
         pd.DataFrame(
             {"timestamps": [2.0, 5.0], "market_caps": [200.0, 500.0]}, index=[1, 4]
         )
+    )
+
+
+@pytest.mark.parametrize(
+    "days, freq, days_ago, ms_tol",
+    [
+        (0.3, "5min", 1, 30000),
+        (1, "5min", 1, 30000),
+        (2, "h", 2, 30000),
+        (90, "h", 90, 30000),
+        (187, "D", 187, 8.64e10),
+        (367, "D", 365, 8.64e10),
+    ],
+    ids=["less_than_day", "day", "two_days", "ninety_days", "half_year", "over_year"],
+)
+def test_define_frequency_and_min_timestamp_success(days, freq, days_ago, ms_tol):
+    provider_config = ProviderConfig(days, list(), list(), list(), list(), dict())
+    frequency, min_timestamp = coingecko.define_frequency_and_min_timestamp(
+        provider_config
+    )
+    assert frequency == freq
+    assert min_timestamp == pytest.approx(
+        (datetime.now(UTC) - timedelta(days=days_ago)).timestamp() * 1000,
+        abs=ms_tol,
     )
