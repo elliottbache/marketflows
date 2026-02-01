@@ -128,16 +128,16 @@ def load_coingecko_data(
             coin_mcs[coin] = _remove_faulty_data(time_and_mcs)
 
             # UNCOMMENT THESE LINES TO CREATE RAW DATA FILES FOR DEBUGGING
-            # time_and_mcs.to_csv(f"raw_data_{coin}.csv", index=False)
+            # time_and_mcs.to_csv(f"PRIVATE/raw_data/raw_data_{coin}.csv", index=False)
 
     return coin_mcs, symbols, all_narrative_coins
 
 
-def _parse_coins_from_groups(coin_groups: dict[str, list[str]]) -> set[str]:
+def _parse_coins_from_groups(coin_groups: dict[str, set[str]]) -> set[str]:
     """Parse portfolio groups into a set of coins.
 
     Examples:
-        >>> _parse_coins_from_groups({"g1": ["btc", "eth"], "g2": ["eth", "sol"]}) == {"btc", "eth", "sol"}
+        >>> _parse_coins_from_groups({"g1": {"btc", "eth"}, "g2": {"eth", "sol"}}) == {"btc", "eth", "sol"}
         True
     """
     return {coin for group in coin_groups.values() for coin in group}
@@ -486,7 +486,7 @@ def _remove_faulty_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def define_frequency_min_and_max_timestamp(
     provider_config: ProviderConfig,
-) -> tuple[str, float]:
+) -> tuple[str, float, float]:
     """Define the frequency, minimum, and maximum timestamp retrieved from CoinGecko.
 
     Time spans that are lower than 1 day are set to 1 day.  Time spans that are higher
@@ -519,6 +519,7 @@ def define_frequency_min_and_max_timestamp(
             min_datetime.replace(second=0, microsecond=0).timestamp()
             * 1000
         )
+        max_timestamp = now.replace(second=0, microsecond=0).timestamp() * 1000
 
     elif provider_config.days <= 90:
         logger.info(
@@ -531,6 +532,9 @@ def define_frequency_min_and_max_timestamp(
             min_datetime.replace(minute=0, second=0, microsecond=0).timestamp()
             * 1000
         )
+        max_timestamp = now.replace(minute=0, second=0, microsecond=0).timestamp() \
+                        * 1000
+
     elif provider_config.days < 365:
         logger.info(
             f"CoinGecko data collection time span is {provider_config.days}"
@@ -542,6 +546,8 @@ def define_frequency_min_and_max_timestamp(
             min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
             * 1000
         )
+        max_timestamp = now.replace(hour=0, minute=0, second=0, microsecond=0)\
+                        .timestamp() * 1000
     else:
         logger.info(
             "CoinGecko data collection time span is 365 "
@@ -553,5 +559,7 @@ def define_frequency_min_and_max_timestamp(
             min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
             * 1000
         )
+        max_timestamp = now.replace(hour=0, minute=0, second=0, microsecond=0)\
+                        .timestamp() * 1000
 
-    return freq, min_timestamp, now.timestamp() * 1000
+    return freq, min_timestamp, max_timestamp

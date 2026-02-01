@@ -13,8 +13,8 @@ class ProviderConfig:
         base_assets (list[str]): assets used as base currency (e.g. EUR, JPY, etc.).
             These must be in decreasing MC order.
         narratives (list[str]): list of narratives to be graphed
-        range_lower_limits (list[float]): the lower limits of each of the ranges
-        asset_groups (dict[str, list[str]]): groups of assets as would be the case for multiple portfolios
+        range_lower_limits (list[float]): the lower limits of each of the market cap ranges
+        asset_groups (dict[str, set[str]]): groups of assets as would be the case for multiple portfolios
             containing (often) different assets
     """
 
@@ -23,7 +23,7 @@ class ProviderConfig:
     base_assets: list[str]
     narratives: list[str]
     range_lower_limits: list[float]
-    asset_groups: dict[str, list[str]]
+    asset_groups: dict[str, set[str]]
 
 
 # function to tie all other config functions together: load_and_validate_config
@@ -36,6 +36,9 @@ class ProviderConfig:
 
 # function error check input
 
+# remove duplicate narratives
+
+# function to rename groups that have same name as narrative
 
 # validate_config
 
