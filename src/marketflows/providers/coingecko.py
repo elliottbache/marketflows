@@ -3,7 +3,7 @@
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
 import pandas as pd
