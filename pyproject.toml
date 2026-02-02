@@ -38,6 +38,7 @@ dev = [
   "pandas-stubs",
   "types-requests",
   "requests-mock",
+  "jupyter",
 ]
 
 [project.scripts]

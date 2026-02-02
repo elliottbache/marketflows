@@ -1,19 +1,259 @@
-# tie together all functions: aggregate_data
+import pandas as pd
 
-#   group tokens as per config: group_tokens
 
-#   calculate aggregate MCs for narratives: sum_mcs
+def create_master_df(
+    asset_mcs: dict[str, pd.DataFrame],
+    *,
+    freq: str,
+    min_timestamp: float,
+    max_timestamp: float,
+) -> pd.DataFrame:
+    """Create a master dataframe from the asset market caps.
 
-#   calculate growth for cap range MCs: calculate_range_growth
+    Creates timestamps from frequency and min timestamp, interpolating the market caps
+    of all other assets to these timestamps.
 
-# calculate_range_growth
+    Args:
+        asset_mcs: the asset market caps
+        freq: frequency to interpolate to
+        min_timestamp: the min timestamp used to create timestamps
+        max_timestamp: the max timestamp used to create timestamps
 
-#   call function to find tokens that were in last reading
+    Returns:
+        master dataframe
+    """
+    start_time = pd.to_datetime(min_timestamp, unit="ms", utc=True)
+    end_time = pd.to_datetime(max_timestamp, unit="ms", utc=True)
+    time_index = pd.date_range(
+        start=start_time, end=end_time, freq=freq, name="Datetime"
+    ).floor("s")
+    df_master = pd.DataFrame(index=time_index)
 
-#   call function to take difference between last reading and this reading, depending on MC classify into cap range
+    for asset, df_asset in asset_mcs.items():
+        df_asset["Datetime"] = pd.to_datetime(
+            df_asset["timestamps"], unit="ms", utc=True
+        )
+        df_asset = df_asset.set_index("Datetime")
+        df_asset = df_asset.sort_index()
+        df_combined = df_master.join(df_asset[["market_caps"]], how="outer")
+        df_combined = df_combined.rename(columns={"market_caps": asset})
+        df_combined[asset] = df_combined[asset].interpolate(
+            method="time", limit_direction="both"
+        )
+        df_master = df_combined.reindex(df_master.index)
 
-#   define tokens for next round's difference
+    return df_master
 
-#   call function to write tokens for next round's difference to file
 
-#   call function to write MCs differences to file
+def aggregate_groups(
+    *,
+    group_assets: dict[str, set[str]],
+    df_master: pd.DataFrame,
+) -> pd.DataFrame:
+    """Sum market caps of assets from each group together.
+
+    Args:
+        group_assets: for each group, the set of assets within it
+        df_master: market caps for all the assets with one master datetime index
+
+    Returns:
+        dataframe of market caps for each group at each master datetime
+    """
+    df_groups = pd.DataFrame(index=df_master.index)
+    for group, assets in group_assets.items():
+        _validate_assets(assets, df_master=df_master, group=group)
+        df_group = df_master[list(assets)]
+        df_groups[group] = df_group.sum(axis=1)
+
+    return df_groups
+
+
+def _validate_assets(
+    assets: set[str], *, df_master: pd.DataFrame, group: str = ""
+) -> None:
+    """Raise if the assets are not in the master dataframe."""
+    columns_set = set(df_master.columns)
+    if not assets <= columns_set:
+        raise ValueError(
+            f"Master DataFrame does not contain required assets in group.  "
+            f"Group: {group}, required assets: {assets}"
+        )
+
+
+def prepare_cap_ranges(
+    *,
+    range_lower_limits: list[float],
+    df_master: pd.DataFrame,
+) -> pd.DataFrame:
+    """Prepare data for calculating market cap range values, growth, and inflection.
+
+    Args:
+        range_lower_limits: the lower limits of each of the market cap ranges
+        df_master: market caps for all the assets with one master datetime index
+
+    Returns:
+        DataFrame with each asset after another
+    """
+    if len(range_lower_limits) == 0:
+        return pd.DataFrame()
+
+    # all assets in given ranges
+    assets = _define_bucket_assets(range_lower_limits, df_master=df_master)
+
+    # create df with date, asset, market cap
+    df_long = _create_long_df(df_master=df_master, assets=assets)
+
+    # assign bucket for each row
+    for lower_limit in range_lower_limits:
+        df_long.loc[df_long["market_caps"] > lower_limit, "lower_limit"] = lower_limit
+
+    # define index name
+    df_long.index.name = "Datetime"
+
+    return df_long
+
+
+def _define_bucket_assets(
+    range_lower_limits: list[float], *, df_master: pd.DataFrame
+) -> set[str]:
+    """Define all the assets that will be bucketed.
+
+    Args:
+        range_lower_limits: the lower limits of each of the market cap ranges
+        df_master: market caps for all the assets with one master datetime index
+
+    Returns:
+        set of all the assets
+    """
+    min_limit = min(range_lower_limits)
+    bucket_assets = df_master.columns[df_master.iloc[-1] > min_limit].to_list()
+
+    return set(bucket_assets)
+
+
+def _create_long_df(*, df_master: pd.DataFrame, assets: set[str]) -> pd.DataFrame:
+    """Create dataframe with ``Datetime``, ``asset``, and ``market_caps`` headers"""
+    long_df = pd.DataFrame()
+    for asset in assets:
+        short_df = pd.DataFrame(index=df_master.index, columns=["asset", "market_caps"])
+        short_df["asset"] = asset
+        short_df["market_caps"] = df_master[asset]
+        long_df = pd.concat([long_df, short_df])
+
+    return long_df
+
+
+def aggregate_cap_ranges(
+    *, df_long: pd.DataFrame, bucket_column: str = "lower_limit"
+) -> pd.DataFrame:
+    """Sum market caps of assets from each group together.
+
+    Args:
+        df_long: market caps for all the assets with one master datetime index
+            organized into blocks of one asset after another
+        bucket_column: name of column that contains buckets
+
+    Returns:
+        dataframe of market caps for each group at each master datetime
+    """
+    # groupby date, bucket and sum
+    group = df_long.groupby(by=["Datetime", bucket_column])["market_caps"].sum()
+
+    # unstack
+    df_buckets = group.unstack(level=-1)
+
+    return df_buckets
+
+
+def aggregate_cap_range_growths(
+    *,
+    df_long: pd.DataFrame,
+) -> pd.DataFrame:
+    """Calculate growths for each market cap bucket.
+
+    Args:
+        df_long: market caps for all the assets with one master datetime index
+            organized into blocks of one asset after another
+
+    Returns:
+        dataframe of market cap growths for each bucket at each master datetime
+    """
+    # add column with lower_limit bucket from previous time step (t-1)
+    df_long_prev = df_long.copy()
+    df_long_prev["prev_lower_limit"] = df_long_prev.groupby("asset")[
+        "lower_limit"
+    ].shift(1)
+
+    # create current time step's buckets
+    df_buckets = aggregate_cap_ranges(df_long=df_long, bucket_column="lower_limit")
+
+    # create buckets with previous time step's (t-1) lower limits and sum
+    df_buckets_prev = aggregate_cap_ranges(
+        df_long=df_long_prev, bucket_column="prev_lower_limit"
+    )
+
+    # shift buckets and define 2nd derivative terms
+    M1 = df_buckets.shift(1)
+    M0 = df_buckets_prev
+
+    # calculate time step for derivative = (x1-x0)/(dt)
+    diff_series = pd.to_timedelta(df_buckets.index.to_series().diff())
+    dt = diff_series.dt.total_seconds()
+
+    df_out = M0 - M1
+    df_out = df_out.div(dt, axis=0)
+
+    return df_out
+
+
+def aggregate_cap_range_inflections(
+    *,
+    df_long: pd.DataFrame,
+) -> pd.DataFrame:
+    """Calculate inflections for each market cap bucket.
+
+    Args:
+        df_long: market caps for all the assets with one master datetime index
+            organized into blocks of one asset after another
+
+    Returns:
+        dataframe of market cap inflections for each bucket at each master datetime
+    """
+    # add column with lower_limit bucket from previous time step (t-1)
+    df_long_prev = df_long.copy()
+    df_long_prev["prev_lower_limit"] = df_long_prev.groupby("asset")[
+        "lower_limit"
+    ].shift(1)
+
+    # add column with lower_limit bucket from before previous time step (t-2)
+    df_long_prev_prev = df_long.copy()
+    df_long_prev_prev["prev_prev_lower_limit"] = df_long_prev_prev.groupby("asset")[
+        "lower_limit"
+    ].shift(2)
+
+    # create buckets with this time step's t lower limits and sum
+    df_buckets = aggregate_cap_ranges(df_long=df_long, bucket_column="lower_limit")
+
+    # create buckets with previous time step's (t-1) lower limits and sum
+    df_buckets_prev = aggregate_cap_ranges(
+        df_long=df_long_prev, bucket_column="prev_lower_limit"
+    )
+
+    # create buckets with before previous time step's (t-2) lower limits and sum
+    df_buckets_prev_prev = aggregate_cap_ranges(
+        df_long=df_long_prev_prev, bucket_column="prev_prev_lower_limit"
+    )
+
+    # shift buckets and define 2nd derivative terms
+    M2 = df_buckets.shift(2)
+    M1 = df_buckets_prev.shift(1)
+    M0 = df_buckets_prev_prev
+
+    # calculate time step for derivative = (x1-x0)/(dt)
+    diff_series = pd.to_timedelta(df_buckets.index.to_series().diff())
+    dt = diff_series.dt.total_seconds()
+
+    df_out = M0 - 2 * M1 + M2
+    df_out = df_out.div(dt.pow(2), axis=0)
+
+    return df_out
