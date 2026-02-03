@@ -6,21 +6,6 @@ from marketflows.analysis import aggregates
 
 
 @pytest.fixture
-def df_master():
-    df = pd.DataFrame()
-    df.index = [
-        pd.Timestamp("1970-01-01 00:00:00+0000", tz="UTC"),
-        pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC"),
-        pd.Timestamp("1970-01-01 00:10:00+0000", tz="UTC"),
-    ]
-    df["bitcoin"] = [1000, 900, 1100]
-    df["usd-coin"] = [1001, 901, 1101]
-    df["solana"] = [1002, 902, 1102]
-
-    return df
-
-
-@pytest.fixture
 def range_lower_limits():
     return [899, 900, 901]
 
@@ -29,14 +14,14 @@ def range_lower_limits():
 def df_long(df_master):
     df = pd.DataFrame(
         {
-            "asset": sorted(["bitcoin", "solana", "usd-coin"] * 3),
-            "market_caps": [1000, 900, 1100, 1002, 902, 1102, 1001, 901, 1101],
+            "asset": sorted(["amazon", "nvidia", "tesla"] * 3),
+            "market_caps": [1002, 902, 1102, 1000, 900, 1100, 1001, 901, 1101],
             "lower_limit": [
                 901.0,
+                901.0,
+                901.0,
+                901.0,
                 899.0,
-                901.0,
-                901.0,
-                901.0,
                 901.0,
                 901.0,
                 900.0,
@@ -86,10 +71,10 @@ def test_create_master_df_success():
     market_caps1 = [1000, 910, 1100, 1200, 1300, 1500, 1700, 1800]
     market_caps2 = [1001, 904, 1104, 1202, 1302, 1502, 1702, 1802]
     asset_market_caps = {
-        "bitcoin": pd.DataFrame(
+        "nvidia": pd.DataFrame(
             {"timestamps": timestamps1, "market_caps": market_caps1}
         ),
-        "ethereum": pd.DataFrame(
+        "alphabet": pd.DataFrame(
             {"timestamps": timestamps2, "market_caps": market_caps2}
         ),
     }
@@ -112,8 +97,8 @@ def test_create_master_df_success():
         pd.to_datetime(1200.0, unit="s", utc=True),
         pd.to_datetime(1500.0, unit="s", utc=True),
     ]
-    assert list(df_master["bitcoin"]) == [1000.0, 940.0, 1200.0, 1700.0, 1800.0, 1800.0]
-    assert list(df_master["ethereum"]) == [
+    assert list(df_master["nvidia"]) == [1000.0, 940.0, 1200.0, 1700.0, 1800.0, 1800.0]
+    assert list(df_master["alphabet"]) == [
         1001.0,
         1001.0,
         1004.0,
@@ -125,18 +110,18 @@ def test_create_master_df_success():
 
 def test_aggregate_groups(df_master):
     group = "mine"
-    group_assets = {group: {"bitcoin", "usd-coin"}}
+    group_assets = {group: {"nvidia", "tesla"}}
     df_groups = aggregates.aggregate_groups(
         group_assets=group_assets, df_master=df_master
     )
 
     df_out = pd.DataFrame(index=df_master.index)
-    df_out[group] = df_master["bitcoin"] + df_master["usd-coin"]
+    df_out[group] = df_master["nvidia"] + df_master["tesla"]
     assert df_out.equals(df_groups)
 
 
 def test_validate_assets_raise(df_master):
-    assets = {"bitcoin", "ethereum"}
+    assets = {"nvidia", "alphabet"}
     with pytest.raises(
         ValueError, match="Master DataFrame does not contain required assets in group"
     ):
@@ -152,15 +137,15 @@ def test_prepare_cap_ranges_success(range_lower_limits, df_master, df_long):
 
 
 def test_define_bucket_assets_success(df_master, range_lower_limits):
-    df_master["solana"] = [700, 600, 800]
+    df_master["amazon"] = [700, 600, 800]
     bucket_assets = aggregates._define_bucket_assets(
         range_lower_limits, df_master=df_master
     )
-    assert bucket_assets <= {"usd-coin", "bitcoin"}
+    assert bucket_assets <= {"tesla", "nvidia"}
 
 
 def test_create_long_df_success(df_master, df_long):
-    assets = {"bitcoin", "solana", "usd-coin"}
+    assets = {"amazon", "nvidia", "tesla"}
     df = aggregates._create_long_df(df_master=df_master, assets=assets)
     df.index.name = "Datetime"
     df = df.sort_values(by=["asset", "Datetime"])
@@ -181,6 +166,8 @@ def test_aggregate_cap_ranges_success(df_long):
     # second row
     expected = pd.Series([900.0, 901.0, 902.0], index=df_buckets.columns)
     actual = df_buckets.loc[pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC"), :]
+    print(f"\nexpected:\n{expected}")
+    print(f"\nactual:\n{actual}")
     pd.testing.assert_series_equal(expected, actual, check_names=False)
 
     # third row
