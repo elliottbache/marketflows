@@ -26,6 +26,23 @@ class ProviderConfig:
     asset_groups: dict[str, set[str]]
 
 
+@dataclass
+class AnalysisConfig:
+    """Create a dataclass to hold the configuration values for analysis.
+
+    Attributes:
+        diff_orders (list[int]): the orders of differentiation where 0 is no
+            differentiation, 1 is the first derivative (growth), and 2 is the
+            2nd derivative (inflection)
+        ema_periods: EMA periods
+        smoothing_ema: EMA period for smoothing growth and inflection data
+    """
+
+    diff_orders: list[int]
+    ema_periods: list[int]
+    smooth_ema: int
+
+
 # function to tie all other config functions together: load_and_validate_config
 
 # function read config file
@@ -47,3 +64,5 @@ class ProviderConfig:
 # check that range values are in ascending order
 
 # remove USD from base_coins
+
+# return ProviderConfig and AnalysisConfig
