@@ -98,7 +98,7 @@ ignore_errors = true
 
 [tool.codespell]
 skip = "./docs/_build,./build,./dist,./.venv,./docs/html,./src/include,./docs/_static,pyproject.toml,./build*,./htmlcov"
-ignore-words-list = "teh,nd,seh,atleast,atmost,deques"
+ignore-words-list = "teh,nd,seh,atleast,atmost,deques,ser"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

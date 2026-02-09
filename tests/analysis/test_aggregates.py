@@ -10,61 +10,6 @@ def range_lower_limits():
     return [899, 900, 901]
 
 
-@pytest.fixture
-def df_long(df_master):
-    df = pd.DataFrame(
-        {
-            "asset": sorted(["amazon", "nvidia", "tesla"] * 3),
-            "market_caps": [1002, 902, 1102, 1000, 900, 1100, 1001, 901, 1101],
-            "lower_limit": [
-                901.0,
-                901.0,
-                901.0,
-                901.0,
-                899.0,
-                901.0,
-                901.0,
-                900.0,
-                901.0,
-            ],
-        },
-        index=df_master.index.append(df_master.index.append(df_master.index)),
-    )
-    df.index.name = "Datetime"
-
-    return df
-
-
-@pytest.fixture
-def df_buckets(df_master):
-    df = pd.DataFrame(
-        {
-            899.0: [np.nan, 900.0, np.nan],
-            900.0: [np.nan, 901.0, np.nan],
-            901.0: [3003.0, 902.0, 3303.0],
-        },
-        index=df_master.index,
-    )
-    df.index.name = "Datetime"
-
-    return df
-
-
-@pytest.fixture
-def df_growth(df_master):
-    df = pd.DataFrame(
-        {
-            899.0: [np.nan, np.nan, 0.666667],
-            900.0: [np.nan, np.nan, 0.666667],
-            901.0: [np.nan, -1.000000, 0.666667],
-        },
-        index=df_master.index,
-    )
-    df.index.name = "Datetime"
-
-    return df
-
-
 def test_create_master_df_success():
     timestamps1 = [0, 450000, 500000, 600000, 700000, 800000, 900000, 1000000]
     timestamps2 = [410000, 500000, 700000, 800000, 900000, 1010000, 1100000, 1600000]

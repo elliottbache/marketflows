@@ -613,8 +613,9 @@ def test_define_frequency_min_and_max_timestamp_success(days, freq, days_ago, ms
     """Give an extra 60 seconds of leeway when checking min and max timestamps
     in case the testing takes longer than expected."""
     provider_config = ProviderConfig(days, list(), list(), list(), list(), dict())
-    frequency, min_timestamp, max_timestamp\
-        = coingecko.define_frequency_min_and_max_timestamp(provider_config)
+    frequency, min_timestamp, max_timestamp = (
+        coingecko.define_frequency_min_and_max_timestamp(provider_config)
+    )
 
     assert frequency == freq
     assert min_timestamp == pytest.approx(

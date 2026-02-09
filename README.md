@@ -48,6 +48,8 @@ to market cap inflection).
    3. Repeat for time step $n$.
 
 
+CHECK IF WE SHOULD BE DOING ONLY SMOOTHING EMA FOR RANGES OR IF DIFFERENT EMA VALUES LIKE FOR NARRATIVES AND GROUPS
+
 
 ### Store locally or query once?
 Free plan has 30 calls per minute limit, and we typically would need to make around 150 calls 

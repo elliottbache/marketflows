@@ -491,9 +491,10 @@ def define_frequency_min_and_max_timestamp(
 
     Time spans that are lower than 1 day are set to 1 day.  Time spans that are higher
     than 365 days are set to 365 days.  Otherwise:
-        - 1 day: 5-minutely data
-        - 1 < days <= 90 days: hourly data
-        - > 90 days: daily data (00:00 UTC)
+    - 1 day: 5-minutely data
+    - 1 < days <= 90 days: hourly data
+    - > 90 days: daily data (00:00 UTC)
+
     Daily data is published at 00:10 UTC for 00:00 UTC.
 
     Args:
@@ -515,10 +516,7 @@ def define_frequency_min_and_max_timestamp(
         )
         freq = "5min"
         min_datetime = now - timedelta(days=1)
-        min_timestamp = (
-            min_datetime.replace(second=0, microsecond=0).timestamp()
-            * 1000
-        )
+        min_timestamp = min_datetime.replace(second=0, microsecond=0).timestamp() * 1000
         max_timestamp = now.replace(second=0, microsecond=0).timestamp() * 1000
 
     elif provider_config.days <= 90:
@@ -529,11 +527,11 @@ def define_frequency_min_and_max_timestamp(
         freq = "h"
         min_datetime = now - timedelta(days=provider_config.days)
         min_timestamp = (
-            min_datetime.replace(minute=0, second=0, microsecond=0).timestamp()
-            * 1000
+            min_datetime.replace(minute=0, second=0, microsecond=0).timestamp() * 1000
         )
-        max_timestamp = now.replace(minute=0, second=0, microsecond=0).timestamp() \
-                        * 1000
+        max_timestamp = (
+            now.replace(minute=0, second=0, microsecond=0).timestamp() * 1000
+        )
 
     elif provider_config.days < 365:
         logger.info(
@@ -546,8 +544,9 @@ def define_frequency_min_and_max_timestamp(
             min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
             * 1000
         )
-        max_timestamp = now.replace(hour=0, minute=0, second=0, microsecond=0)\
-                        .timestamp() * 1000
+        max_timestamp = (
+            now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000
+        )
     else:
         logger.info(
             "CoinGecko data collection time span is 365 "
@@ -559,7 +558,8 @@ def define_frequency_min_and_max_timestamp(
             min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
             * 1000
         )
-        max_timestamp = now.replace(hour=0, minute=0, second=0, microsecond=0)\
-                        .timestamp() * 1000
+        max_timestamp = (
+            now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000
+        )
 
     return freq, min_timestamp, max_timestamp
