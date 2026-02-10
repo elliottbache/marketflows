@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import pandas as pd
 
@@ -8,6 +10,8 @@ from marketflows.analysis.aggregates import (
     prepare_cap_ranges,
 )
 from marketflows.config import AnalysisConfig
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_group_metrics(
@@ -160,6 +164,7 @@ def calculate_range_metrics(
         df_long = prepare_cap_ranges(
             range_lower_limits=range_lower_limits, df_master=df_master
         )
+    assert df_long is not None
 
     base_assets, _ = _initialize_bases(base_assets, df_master)
     first_valid_times = dict()
@@ -339,6 +344,9 @@ def _drop_non_number_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Drop columns with non-numeric values (-inf, inf, nan)."""
     df_out = df.replace([np.inf, -np.inf], np.nan)
     df_out = df_out.dropna(axis="columns", how="all")
+    dropped_cols = df.columns.difference(df_out.columns).to_list()
+    logger.debug(f"Dropped non-numeric columns: {dropped_cols}")
+
     return df_out
 
 
