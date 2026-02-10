@@ -1,26 +1,11 @@
+import logging
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from marketflows.analysis import metrics
 from marketflows.config import AnalysisConfig
-
-
-@pytest.fixture
-def df_groups():
-    df = pd.DataFrame()
-    df.index = [
-        pd.Timestamp("1970-01-01 00:00:00+0000", tz="UTC"),
-        pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC"),
-        pd.Timestamp("1970-01-01 00:10:00+0000", tz="UTC"),
-        pd.Timestamp("1970-01-01 00:15:00+0000", tz="UTC"),
-        pd.Timestamp("1970-01-01 00:20:00+0000", tz="UTC"),
-        pd.Timestamp("1970-01-01 00:25:00+0000", tz="UTC"),
-    ]
-    df["pharma"] = [1000.0, 900.0, 1100.0, 1200.0, 1300.0, 1500.0]
-    df["ai"] = [1001.0, 901.0, 1101.0, 1201.0, 1301.0, 1501.0]
-
-    return df
 
 
 def test_calculate_group_metrics_success(df_master, df_groups):
@@ -330,7 +315,8 @@ def test_normalize_df_with_base_asset_success(df_master, df_groups):
     assert "expected_ai_by_china-yuan" not in df_out.columns
 
 
-def test_drop_non_number_columns_success():
+def test_drop_non_number_columns_success(caplog):
+    caplog.set_level(logging.DEBUG)
     df = pd.DataFrame(
         {"china-yuan": [1, np.nan, np.inf], "japan-yen": [-np.inf, np.nan, np.inf]}
     )
@@ -339,6 +325,9 @@ def test_drop_non_number_columns_success():
     df_expected.loc[2, "china-yuan"] = np.nan
     df_expected = df_expected.drop(columns="japan-yen")
     pd.testing.assert_frame_equal(df_expected, df_out)
+
+    assert "Dropped non-numeric columns:" in caplog.text
+    assert "japan-yen" in caplog.text
 
 
 def test_name_column_success():
