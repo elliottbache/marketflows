@@ -28,3 +28,17 @@ def find_first_valid_time(df: pd.DataFrame) -> pd.Timestamp | None:
         return None
     else:
         return valid_indices.max()
+
+
+def find_last_valid_time(df: pd.DataFrame) -> pd.Timestamp | None:
+    """Find last valid time for given dataframe.
+
+    For time to be valid, all values in a row must be a number.  If one of the columns
+    has no valid data, it will be ignored.
+    """
+    last_indices = df.apply(lambda x: x.last_valid_index())
+    valid_indices = last_indices.dropna()
+    if valid_indices.empty:
+        return None
+    else:
+        return valid_indices.max()
