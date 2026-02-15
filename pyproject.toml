@@ -17,7 +17,8 @@ keywords = ["narratives", "capital", "flows"]
 # Runtime deps
 dependencies = [
   "pandas>=2.0",
-  "requests"
+  "requests",
+  "matplotlib"
 ]
 
 # Optional extras for dev tools

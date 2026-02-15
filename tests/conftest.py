@@ -81,3 +81,20 @@ def df_buckets(df_master):
     df.index.name = "Datetime"
 
     return df
+
+
+@pytest.fixture
+def df_groups():
+    df = pd.DataFrame()
+    df.index = [
+        pd.Timestamp("1970-01-01 00:00:00+0000", tz="UTC"),
+        pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC"),
+        pd.Timestamp("1970-01-01 00:10:00+0000", tz="UTC"),
+        pd.Timestamp("1970-01-01 00:15:00+0000", tz="UTC"),
+        pd.Timestamp("1970-01-01 00:20:00+0000", tz="UTC"),
+        pd.Timestamp("1970-01-01 00:25:00+0000", tz="UTC"),
+    ]
+    df["pharma"] = [1000.0, 900.0, 1100.0, 1200.0, 1300.0, 1500.0]
+    df["ai"] = [1001.0, 901.0, 1101.0, 1201.0, 1301.0, 1501.0]
+
+    return df

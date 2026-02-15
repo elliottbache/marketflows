@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 from marketflows.types import FlowType
 
@@ -43,7 +44,43 @@ class AnalysisConfig:
     smooth_ema: int
 
 
+# add base_assets, diff orders and ema periods initialization here since it is used everywhere
+# don't forget to remove initialize_base_assets and whatever for diff_orders in other
+# modules
+
+
 # function to tie all other config functions together: load_and_validate_config
+def load_and_validate_config(
+    config_file: Path,
+) -> tuple[ProviderConfig, AnalysisConfig]:
+    """Load and validate the config file."""
+    # load and read file
+
+    # curate data
+
+    provider_config = ProviderConfig(
+        91,
+        ["narratives", "individual_assets", "market_cap_ranges"],
+        ["bitcoin"],
+        ["made-in-usa", "aave-tokens"],
+        [1e9, 1e10],
+        {"Bullmind": {"zano", "superfarm"}, "cryptocapo": {"haha", "mstr2100"}},
+    )
+    # this is a test provider_config.  Erase this later!!!
+    analysis_config = AnalysisConfig([0, 1, 2], [20], 10)
+
+    return provider_config, analysis_config
+
+
+def initialize_base_assets(base_assets: list[str] | None = None) -> list[str]:
+    """Create base_assets list if not already created and add us-dollar."""
+    if base_assets is None:
+        base_assets = list()
+    if not base_assets or base_assets[0] != "us-dollar":
+        base_assets.insert(0, "us-dollar")
+
+    return base_assets
+
 
 # function read config file
 

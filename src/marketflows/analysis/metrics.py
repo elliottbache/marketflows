@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import pandas as pd
 
-from marketflows._helpers import find_first_valid_time
+from marketflows._helpers import _order_suffixes, find_first_valid_time, name_column
 from marketflows.analysis.aggregates import (
     aggregate_cap_range_growths,
     aggregate_cap_range_inflections,
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def calculate_group_metrics(
     *,
-    base_assets: list[str] | None = None,
+    base_assets: list[str],
     df_base: pd.DataFrame | None = None,
     df_groups: pd.DataFrame,
     analysis_config: AnalysisConfig,
@@ -45,7 +45,7 @@ def calculate_group_metrics(
     """
     ema_periods = _initialize_ema_periods(analysis_config.ema_periods)
     diff_orders = _initialize_diff_orders(analysis_config.diff_orders)
-    base_assets, df_base = _initialize_bases(base_assets, df_base)
+    df_base = _initialize_bases(base_assets, df_base)
 
     df_out = pd.DataFrame(index=df_groups.index)
     for base_asset in base_assets:
@@ -59,7 +59,7 @@ def calculate_group_metrics(
         first_valid_time = find_first_valid_time(df)
 
         for group in df_groups.columns:
-            group_column = _name_column(original_column=group, base_asset=base_asset)
+            group_column = name_column(original_column=group, base_asset=base_asset)
 
             # skip columns with no valid data
             if group_column not in df.columns:
@@ -69,21 +69,19 @@ def calculate_group_metrics(
             first_valid_record = pd.to_numeric(
                 df.at[first_valid_time, group_column], errors="coerce"
             )
-            print(f"\ndf[group_column]: \n{df[group_column]}")
-            print(f"\nfirst_valid_record: \n{first_valid_record}")
             df[group_column] = df[group_column] / first_valid_record
 
             df = _drop_non_number_columns(df)
 
             # calculate derivatives of EMAs
             for diff_order in diff_orders:
-                for ema in ema_periods:
-                    if ema > 1:
+                for ema_period in ema_periods:
+                    if ema_period > 1:
                         df = _calculate_ema(
                             df=df,
                             group=group,
                             base_asset=base_asset,
-                            ema=ema,
+                            ema_period=ema_period,
                             diff_order=diff_order,
                         )
 
@@ -92,7 +90,7 @@ def calculate_group_metrics(
                             df=df,
                             group=group,
                             base_asset=base_asset,
-                            ema=ema,
+                            ema_period=ema_period,
                             diff_order=diff_order,
                             smooth_ema=analysis_config.smooth_ema,
                         )
@@ -107,7 +105,7 @@ def calculate_group_metrics(
 
 def calculate_range_metrics(
     *,
-    base_assets: list[str] | None = None,
+    base_assets: list[str],
     df_master: pd.DataFrame | None = None,
     df_ranges: pd.DataFrame,
     df_long: pd.DataFrame | None = None,
@@ -164,9 +162,11 @@ def calculate_range_metrics(
         df_long = prepare_cap_ranges(
             range_lower_limits=range_lower_limits, df_master=df_master
         )
-    assert df_long is not None
+    if df_long is None:
+        raise ValueError(
+            "df_long must be defined for growth and inflection calculations"
+        )
 
-    base_assets, _ = _initialize_bases(base_assets, df_master)
     first_valid_times = dict()
 
     # find first valid time for each base asset
@@ -201,7 +201,7 @@ def calculate_range_metrics(
 
             first_valid_time = first_valid_times[base_asset]
             for range in df_ranges.columns:
-                range_column = _name_column(
+                range_column = name_column(
                     original_column=range, base_asset=base_asset, diff_order=diff_order
                 )
 
@@ -224,13 +224,13 @@ def calculate_range_metrics(
                 df = _drop_non_number_columns(df)
 
                 # calculate EMAs
-                for ema in ema_periods:
-                    if ema > 1:
+                for ema_period in ema_periods:
+                    if ema_period > 1:
                         df = _calculate_ema(
                             df=df,
                             group=range,
                             base_asset=base_asset,
-                            ema=ema,
+                            ema_period=ema_period,
                             diff_order=diff_order,
                         )
 
@@ -280,18 +280,14 @@ def _initialize_diff_orders(diff_orders: list[int] | None = None) -> list[int]:
 
 
 def _initialize_bases(
-    base_assets: list[str] | None = None,
+    base_assets: list[str],
     df_base: pd.DataFrame | None = None,
-) -> tuple[list[str], pd.DataFrame]:
+) -> pd.DataFrame:
     """Create base_assets list and df_base DataFrame if not already created.
 
     Raises:
         ValueError: if base_assets are not in df_base
     """
-    if base_assets is None:
-        base_assets = list()
-    if not base_assets or base_assets[0] != "us-dollar":
-        base_assets.insert(0, "us-dollar")
     for base_asset in base_assets:
         if (
             base_asset != "us-dollar"
@@ -303,7 +299,7 @@ def _initialize_bases(
     if df_base is None:
         df_base = pd.DataFrame()
 
-    return base_assets, df_base
+    return df_base
 
 
 def _normalize_df_with_base_asset(
@@ -333,7 +329,7 @@ def _normalize_df_with_base_asset(
 
     df = pd.DataFrame(index=df_groups.index)
     for group in df_groups.columns:
-        group_column = _name_column(original_column=group, base_asset=base_asset)
+        group_column = name_column(original_column=group, base_asset=base_asset)
         df[group_column] = df_groups[group] / df_base[base_asset]
         df = _drop_non_number_columns(df)
 
@@ -350,53 +346,32 @@ def _drop_non_number_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df_out
 
 
-def _name_column(
-    *,
-    original_column: str,
-    base_asset: str = "us-dollar",
-    ema: int = 1,
-    diff_order: int = 0,
-) -> str:
-    """Create name for column with base currency."""
-    column = str(original_column)
-    column += "_by_" + base_asset
-
-    if ema > 1:
-        column += "_ema" + str(ema)
-
-    if diff_order == 0:
-        pass
-    elif diff_order == 1:
-        column += "_growth"
-    elif diff_order == 2:
-        column += "_inflection"
-    else:
-        column += "_deriv" + str(diff_order)
-
-    return _order_suffixes(column).strip()
-
-
 def _calculate_ema(
     *,
     df: pd.DataFrame,
     group: str,
     base_asset: str = "us-dollar",
-    ema: int = 1,
+    ema_period: int = 1,
     diff_order: int = 0,
 ) -> pd.DataFrame:
     """Calculate EMA data for given dataframe."""
-    column = _name_column(
-        original_column=group, base_asset=base_asset, ema=ema, diff_order=diff_order
+    column = name_column(
+        original_column=group,
+        base_asset=base_asset,
+        ema_period=ema_period,
+        diff_order=diff_order,
     )
     if column in df.columns:
         return df
 
-    no_ema_column = _name_column(
+    no_ema_column = name_column(
         original_column=group, base_asset=base_asset, diff_order=diff_order
     )
 
     df_out = df.copy()
-    df_out[column] = df[no_ema_column].ewm(span=ema, adjust=False, min_periods=1).mean()
+    df_out[column] = (
+        df[no_ema_column].ewm(span=ema_period, adjust=False, min_periods=1).mean()
+    )
     df_out = _drop_non_number_columns(df_out)
 
     return df_out
@@ -407,19 +382,25 @@ def _calculate_derivative(
     df: pd.DataFrame,
     group: str,
     base_asset: str = "us-dollar",
-    ema: int = 1,
+    ema_period: int = 1,
     diff_order: int = 1,
     smooth_ema: int | None = 10,
 ) -> pd.DataFrame:
     """Calculate derivative for given dataframe, smoothing results."""
-    column = _name_column(
-        original_column=group, base_asset=base_asset, ema=ema, diff_order=diff_order
+    column = name_column(
+        original_column=group,
+        base_asset=base_asset,
+        ema_period=ema_period,
+        diff_order=diff_order,
     )
     if column in df.columns:
         return df
 
-    integral_column = _name_column(
-        original_column=group, base_asset=base_asset, ema=ema, diff_order=diff_order - 1
+    integral_column = name_column(
+        original_column=group,
+        base_asset=base_asset,
+        ema_period=ema_period,
+        diff_order=diff_order - 1,
     )
     df_out = df.copy()
     diff_series = pd.to_timedelta(df_out.index.to_series().diff())
@@ -430,43 +411,18 @@ def _calculate_derivative(
     # smooth out the 1st and 2nd order graphs with EMA10
     if smooth_ema is None:
         smooth_ema = 1
-    df_out[column] = _smooth_series(df_out[column], ema=smooth_ema)
+    df_out[column] = _smooth_series(df_out[column], ema_period=smooth_ema)
 
     df_out = _drop_non_number_columns(df_out)
 
     return df_out
 
 
-def _smooth_series(ser: pd.Series, *, ema: int | None = 1) -> pd.Series:
-    if ema is None or ema == 1:
+def _smooth_series(ser: pd.Series, *, ema_period: int | None = 1) -> pd.Series:
+    if ema_period is None or ema_period == 1:
         return ser
     else:
-        return ser.ewm(span=ema, adjust=False, min_periods=1).mean()
-
-
-def _order_suffixes(column: str) -> str:
-    """Given a column name with suffixes, return a column with suffixes in deterministic
-    order."""
-    suffixes = column.split("_")
-    prefix = suffixes[0]
-    suffixes = suffixes[1:]
-
-    try:
-        base_asset = "_" + suffixes[suffixes.index("by") + 1]
-    except ValueError:
-        base_asset = ""
-
-    diff_order = ""
-    for suffix in suffixes:
-        if suffix == "growth" or suffix == "inflection" or "deriv" in suffix:
-            diff_order = "_" + str(suffix)
-
-    ema = ""
-    for suffix in suffixes:
-        if suffix[:3] == "ema":
-            ema = "_" + str(suffix)
-
-    return f"{prefix}_by{base_asset}{ema}{diff_order}"
+        return ser.ewm(span=ema_period, adjust=False, min_periods=1).mean()
 
 
 def _normalize_by_current_timestep(df: pd.DataFrame) -> pd.DataFrame:
@@ -495,14 +451,14 @@ def _normalize_by_current_timestep(df: pd.DataFrame) -> pd.DataFrame:
         maxes[suffix] = df.filter(regex=f"{suffix}$").max(axis=1)
 
     # normalize each dataframe using (x - min) / (max - min)
-    df_out = pd.DataFrame(index=df.index)
+    new_cols = {}
     for column in df.columns:
         suffix = _get_suffix(column)
         denom = maxes[suffix] - mins[suffix]
         unit_series = (df[column] - mins[suffix]) / denom
-        df_out[column + "_unit"] = unit_series.replace([np.inf, -np.inf], np.nan)
+        new_cols[column + "_unit"] = unit_series.replace([np.inf, -np.inf], np.nan)
 
-    df_out = _drop_non_number_columns(df_out)
+    df_out = _drop_non_number_columns(pd.DataFrame(new_cols))
 
     return df_out
 

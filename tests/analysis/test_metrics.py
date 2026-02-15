@@ -10,7 +10,7 @@ from marketflows.config import AnalysisConfig
 
 def test_calculate_group_metrics_success(df_master, df_groups):
     # make 2 other base assets
-    base_assets = ["japan-yen", "china-yuan"]
+    base_assets = ["us-dollar", "japan-yen", "china-yuan"]
     df_base = pd.DataFrame(index=df_master.index)
     df_base["japan-yen"] = df_master["amazon"] * 2
     df_base["china-yuan"] = df_master["nvidia"] * 2
@@ -106,7 +106,7 @@ def test_calculate_group_metrics_success(df_master, df_groups):
 class TestCalculateRangeMetrics:
     def test_calculate_range_metrics_success(self, df_master, df_buckets, df_long):
         # make 2 other base assets
-        base_assets = ["japan-yen", "china-yuan"]
+        base_assets = ["us-dollar", "japan-yen", "china-yuan"]
         df_master["japan-yen"] = df_master["amazon"] * 2
         df_master["china-yuan"] = df_master["nvidia"] * 2
 
@@ -164,7 +164,7 @@ class TestCalculateRangeMetrics:
 
     def test_calculate_range_metrics_no_long_df_success(self, df_master, df_buckets):
         # make 2 other base assets
-        base_assets = ["amazon", "tesla"]
+        base_assets = ["us-dollar", "amazon", "tesla"]
 
         analysis_config = AnalysisConfig(None, [3, 20], None)
 
@@ -253,39 +253,33 @@ def test_initialize_diff_orders(diff_orders, diff_orders_out, exc, exc_msg):
 
 
 @pytest.mark.parametrize(
-    "base_assets, df_base, base_assets_exp, exc, exc_msg",
+    "base_assets, df_base, exc, exc_msg",
     [
-        (None, None, ["us-dollar"], None, None),
-        ([], None, ["us-dollar"], None, None),
+        (["us-dollar"], None, None, None),
         (
             ["japan-yen"],
             pd.DataFrame({"china-yuan": [1]}),
-            ["us-dollar"],
             ValueError,
             "not in base dataframe",
         ),
-        (None, pd.DataFrame({"china-yuan": [1]}), ["us-dollar"], None, None),
+        (["us-dollar"], pd.DataFrame({"china-yuan": [1]}), None, None),
     ],
     ids=[
-        "none_base_assets",
-        "empty_base_assets",
+        "only_dollars_base_assets",
         "base_asset_not_in_df_base",
         "valid_df_base",
     ],
 )
-def test_initialize_bases(base_assets, df_base, base_assets_exp, exc, exc_msg):
+def test_initialize_bases(base_assets, df_base, exc, exc_msg):
     if exc is None:
-        base_assets_actual, df_base_actual = metrics._initialize_bases(
-            base_assets, df_base
-        )
-        assert base_assets_actual == base_assets_exp
+        df_base_actual = metrics._initialize_bases(base_assets, df_base)
         if df_base is None:
             pd.testing.assert_frame_equal(pd.DataFrame(), df_base_actual)
         else:
             pd.testing.assert_frame_equal(df_base, df_base_actual)
     else:
         with pytest.raises(exc, match=exc_msg):
-            _, _ = metrics._initialize_bases(base_assets, df_base)
+            _ = metrics._initialize_bases(base_assets, df_base)
 
 
 def test_normalize_df_with_base_asset_success(df_master, df_groups):
@@ -330,31 +324,14 @@ def test_drop_non_number_columns_success(caplog):
     assert "japan-yen" in caplog.text
 
 
-def test_name_column_success():
-    original_column = "blah"
-    base_asset = "nvidia"
-    ema = 20
-    diff_order = 1
-    column_name = metrics._name_column(
-        original_column=original_column,
-        base_asset=base_asset,
-        ema=ema,
-        diff_order=diff_order,
-    )
-    assert (
-        column_name
-        == original_column + "_by_" + base_asset + "_ema" + str(ema) + "_growth"
-    )
-
-
 def test_calculate_ema_success(df_groups):
     df_groups["expected_ema"] = [1001, 951, 1026, 1113.5, 1207.25, 1354.125]
     group = "ai"
-    ema = 3
+    ema_period = 3
     df_groups = df_groups.rename(columns={"ai": "ai_by_us-dollar"})
     df_groups = df_groups.rename(columns={"pharma": "pharma_by_us-dollar"})
 
-    df_out = metrics._calculate_ema(df=df_groups, group=group, ema=ema)
+    df_out = metrics._calculate_ema(df=df_groups, group=group, ema_period=ema_period)
 
     assert df_out["pharma_by_us-dollar"].equals(df_groups["pharma_by_us-dollar"])
     pd.testing.assert_series_equal(
@@ -418,13 +395,6 @@ class TestCalculateDerivative:
             atol=1e-6,
             check_names=False,
         )
-
-
-def test_order_suffixes_success(df_groups):
-    column = "amabyderivzon_ema1.5_deriv200_by_china-yuan"
-    column_out = metrics._order_suffixes(column)
-
-    assert column_out == "amabyderivzon_by_china-yuan_ema1.5_deriv200"
 
 
 def test_normalize_by_current_timestep_success(df_groups):
