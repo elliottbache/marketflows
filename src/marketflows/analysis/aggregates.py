@@ -21,6 +21,19 @@ def create_master_df(
 
     Returns:
         master dataframe
+
+    Examples:
+        >>> import pandas as pd
+        >>> asset_mcs = {
+        ...     "nvidia": pd.DataFrame(
+        ...         {"timestamps": [0, 1000], "market_caps": [10.0, 20.0]}
+        ...     )
+        ... }
+        >>> df = create_master_df(asset_mcs, freq="1s", min_timestamp=0, max_timestamp=1000)
+        >>> df.to_dict("list")
+        {'nvidia': [10.0, 20.0]}
+        >>> df.index.name
+        'Datetime'
     """
     start_time = pd.to_datetime(min_timestamp, unit="ms", utc=True)
     end_time = pd.to_datetime(max_timestamp, unit="ms", utc=True)
@@ -29,7 +42,8 @@ def create_master_df(
     ).floor("s")
     df_master = pd.DataFrame(index=time_index)
 
-    for asset, df_asset in asset_mcs.items():
+    for asset, asset_mc in asset_mcs.items():
+        df_asset = asset_mc.copy()
         df_asset["Datetime"] = pd.to_datetime(
             df_asset["timestamps"], unit="ms", utc=True
         )
@@ -58,6 +72,14 @@ def aggregate_groups(
 
     Returns:
         dataframe of market caps for each group at each master datetime
+
+    Examples:
+        >>> import pandas as pd
+        >>> idx = pd.date_range("2020-01-01", periods=2, freq="1s", tz="UTC", name="Datetime")
+        >>> df_master = pd.DataFrame({"a": [10.0, 11.0], "b": [20.0, 19.0]}, index=idx)
+        >>> group_assets = {"grp": {"a", "b"}}
+        >>> aggregate_groups(group_assets=group_assets, df_master=df_master).to_dict("list")
+        {'grp': [30.0, 30.0]}
     """
     df_groups = pd.DataFrame(index=df_master.index)
     for group, assets in group_assets.items():
@@ -71,7 +93,17 @@ def aggregate_groups(
 def _validate_assets(
     assets: set[str], *, df_master: pd.DataFrame, group: str = ""
 ) -> None:
-    """Raise if the assets are not in the master dataframe."""
+    """Raise if the assets are not in the master dataframe.
+
+    Examples:
+        >>> import pandas as pd
+        >>> df_master = pd.DataFrame({"a": [1.0]})
+        >>> _validate_assets({"a"}, df_master=df_master, group="ok")  # no error
+        >>> _validate_assets({"missing"}, df_master=df_master, group="g1")
+        Traceback (most recent call last):
+        ...
+        ValueError: Master DataFrame does not contain required assets in group.  Group: g1, required assets: {'missing'}
+    """
     columns_set = set(df_master.columns)
     if not assets <= columns_set:
         raise ValueError(
@@ -93,6 +125,18 @@ def prepare_cap_ranges(
 
     Returns:
         DataFrame with each asset after another
+
+    Examples:
+        >>> import pandas as pd
+        >>> idx = pd.date_range("2020-01-01", periods=2, freq="1s", tz="UTC", name="Datetime")
+        >>> df_master = pd.DataFrame({"a": [40.0, 60.0], "b": [1.0, 2.0]}, index=idx)
+        >>> df_long = prepare_cap_ranges(range_lower_limits=[50.0], df_master=df_master)
+        >>> sorted(df_long["asset"].unique().tolist())
+        ['a']
+        >>> df_long["lower_limit"].dropna().unique().tolist()
+        [50.0]
+        >>> df_long.index.name
+        'Datetime'
     """
     if len(range_lower_limits) == 0:
         return pd.DataFrame()
@@ -104,7 +148,7 @@ def prepare_cap_ranges(
     df_long = _create_long_df(df_master=df_master, assets=assets)
 
     # assign bucket for each row
-    for lower_limit in range_lower_limits:
+    for lower_limit in sorted(range_lower_limits):
         df_long.loc[df_long["market_caps"] > lower_limit, "lower_limit"] = lower_limit
 
     # define index name
@@ -132,13 +176,27 @@ def _define_bucket_assets(
 
 
 def _create_long_df(*, df_master: pd.DataFrame, assets: set[str]) -> pd.DataFrame:
-    """Create dataframe with ``Datetime``, ``asset``, and ``market_caps`` headers"""
-    long_df = pd.DataFrame()
-    for asset in assets:
-        short_df = pd.DataFrame(index=df_master.index, columns=["asset", "market_caps"])
-        short_df["asset"] = asset
-        short_df["market_caps"] = df_master[asset]
-        long_df = pd.concat([long_df, short_df])
+    """Create dataframe with ``Datetime``, ``asset``, and ``market_caps`` headers
+
+    Examples:
+        >>> import pandas as pd
+        >>> idx = pd.date_range("2020-01-01", periods=2, freq="1s", tz="UTC", name="Datetime")
+        >>> df_master = pd.DataFrame({"a": [1.0, 2.0], "b": [10.0, 20.0]}, index=idx)
+        >>> out = _create_long_df(df_master=df_master, assets={"b", "a"})
+        >>> out.columns.tolist()
+        ['asset', 'market_caps']
+        >>> out["asset"].unique().tolist()
+        ['a', 'b']
+        >>> out.groupby("asset")["market_caps"].sum().to_dict()
+        {'a': 3.0, 'b': 30.0}
+    """
+    df_list = [
+        pd.DataFrame(
+            {"asset": asset, "market_caps": df_master[asset]}, index=df_master.index
+        )
+        for asset in sorted(assets)
+    ]
+    long_df = pd.concat(df_list)
 
     return long_df
 
@@ -155,6 +213,17 @@ def aggregate_cap_ranges(
 
     Returns:
         dataframe of market caps for each group at each master datetime
+
+    Examples:
+        >>> import pandas as pd
+        >>> idx = pd.date_range("2020-01-01", periods=2, freq="1s", tz="UTC", name="Datetime")
+        >>> index = pd.Index([idx[0], idx[0], idx[1], idx[1]], name="Datetime")
+        >>> df_long = pd.DataFrame(
+        ...     {"asset": ["a", "b", "a", "b"], "market_caps": [10.0, 20.0, 11.0, 19.0], "lower_limit": [0.0, 0.0, 0.0, 0.0]},
+        ...     index=index,
+        ... )
+        >>> aggregate_cap_ranges(df_long=df_long).to_dict("list")
+        {0.0: [30.0, 30.0]}
     """
     # groupby date, bucket and sum
     group = df_long.groupby(by=["Datetime", bucket_column])["market_caps"].sum()

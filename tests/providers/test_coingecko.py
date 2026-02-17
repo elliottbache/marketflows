@@ -65,10 +65,11 @@ def test_load_coingecko_data(
     range_lower_limits = [1.1e11, 1e12, 1e13]
 
     # reduce coin_groups
-    del coin_groups["cryptocapo"]
-    coin_groups["murad"].pop()
-    coin_groups["murad"].pop()
-    coin_groups["murad"].pop()
+    coin_groups_mod = coin_groups.copy()
+    del coin_groups_mod["cryptocapo"]
+    coin_groups_mod["murad"].pop()
+    coin_groups_mod["murad"].pop()
+    coin_groups_mod["murad"].pop()
 
     # monkeypatch timeout so that tests don't take more than 2 seconds
     original = coingecko._query_coins
@@ -157,7 +158,7 @@ def test_load_coingecko_data(
 
     # call tested function
     provider_config = ProviderConfig(
-        days, flow_types, base_coins, narratives, range_lower_limits, coin_groups
+        days, flow_types, base_coins, narratives, range_lower_limits, coin_groups_mod
     )
     coin_mcs, symbols, narrative_coins = coingecko.load_coingecko_data(
         api_key=coingecko_api_key, provider_config=provider_config
@@ -203,9 +204,10 @@ class TestParseCoinsFromGroups:
 
     def test_parse_coins_from_groups_empty_list_success(self, coin_groups):
         # make second coin group empty
-        coin_groups["cryptocapo"] = []
+        coin_groups_mod = coin_groups.copy()
+        coin_groups_mod["cryptocapo"] = []
 
-        coins = coingecko._parse_coins_from_groups(coin_groups)
+        coins = coingecko._parse_coins_from_groups(coin_groups_mod)
         assert isinstance(coins, set)
         assert len(coins) == 6
         assert "murad" not in coins
@@ -574,11 +576,15 @@ def test_create_df_from_chart_data_success():
     # call the tested function
     coin_data_df = coingecko._create_df_from_chart_data(coin_data)
 
-    assert coin_data_df["timestamps"].equals(
-        pd.Series([1711843200000, 1711929600000, 1711983682000])
+    pd.testing.assert_series_equal(
+        coin_data_df["timestamps"],
+        pd.Series([1711843200000, 1711929600000, 1711983682000]),
+        check_names=False,
     )
-    assert coin_data_df["market_caps"].equals(
-        pd.Series([1370247487960.09, 1401370211582.37, 1355701979725.16])
+    pd.testing.assert_series_equal(
+        coin_data_df["market_caps"],
+        pd.Series([1370247487960.09, 1401370211582.37, 1355701979725.16]),
+        check_names=False,
     )
 
 
@@ -590,10 +596,11 @@ def test_remove_faulty_data_success():
         }
     )
     correct_data = coingecko._remove_faulty_data(data)
-    assert correct_data.equals(
+    pd.testing.assert_frame_equal(
+        correct_data,
         pd.DataFrame(
             {"timestamps": [2.0, 5.0], "market_caps": [200.0, 500.0]}, index=[1, 4]
-        )
+        ),
     )
 
 
