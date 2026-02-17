@@ -32,8 +32,6 @@ def test_create_master_df_success():
         min_timestamp=min_timestamp,
         max_timestamp=max_timestamp,
     )
-    print(list(df_master.index))
-    print(df_master)
     assert list(df_master.index) == [
         pd.to_datetime(0.0, unit="ms", utc=True),
         pd.to_datetime(300.0, unit="s", utc=True),
@@ -62,7 +60,7 @@ def test_aggregate_groups(df_master):
 
     df_out = pd.DataFrame(index=df_master.index)
     df_out[group] = df_master["nvidia"] + df_master["tesla"]
-    assert df_out.equals(df_groups)
+    pd.testing.assert_frame_equal(df_out, df_groups)
 
 
 def test_validate_assets_raise(df_master):
@@ -78,10 +76,11 @@ def test_prepare_cap_ranges_success(range_lower_limits, df_master, df_long):
         df_master=df_master, range_lower_limits=range_lower_limits
     )
     df = df.sort_values(by=["asset", "Datetime"])
-    assert df_long.equals(df)
+    pd.testing.assert_frame_equal(df_long, df)
 
 
 def test_define_bucket_assets_success(df_master, range_lower_limits):
+    df_master = df_master.copy()
     df_master["amazon"] = [700, 600, 800]
     bucket_assets = aggregates._define_bucket_assets(
         range_lower_limits, df_master=df_master
@@ -94,8 +93,9 @@ def test_create_long_df_success(df_master, df_long):
     df = aggregates._create_long_df(df_master=df_master, assets=assets)
     df.index.name = "Datetime"
     df = df.sort_values(by=["asset", "Datetime"])
+    df_long = df_long.copy()
     df_long = df_long.drop("lower_limit", axis=1)
-    assert df_long.equals(df)
+    pd.testing.assert_frame_equal(df_long, df)
 
 
 def test_aggregate_cap_ranges_success(df_long):
@@ -106,19 +106,17 @@ def test_aggregate_cap_ranges_success(df_long):
     # first row
     expected = pd.Series([np.nan, np.nan, 3003.0], index=df_buckets.columns)
     actual = df_buckets.loc[pd.Timestamp("1970-01-01 00:00:00+0000", tz="UTC"), :]
-    pd.testing.assert_series_equal(expected, actual, check_names=False)
+    pd.testing.assert_series_equal(expected, actual, check_names=False, rtol=1e-6)
 
     # second row
     expected = pd.Series([900.0, 901.0, 902.0], index=df_buckets.columns)
     actual = df_buckets.loc[pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC"), :]
-    print(f"\nexpected:\n{expected}")
-    print(f"\nactual:\n{actual}")
-    pd.testing.assert_series_equal(expected, actual, check_names=False)
+    pd.testing.assert_series_equal(expected, actual, check_names=False, rtol=1e-6)
 
     # third row
     expected = pd.Series([np.nan, np.nan, 3303.0], index=df_buckets.columns)
     actual = df_buckets.loc[pd.Timestamp("1970-01-01 00:10:00+0000", tz="UTC"), :]
-    pd.testing.assert_series_equal(expected, actual, check_names=False)
+    pd.testing.assert_series_equal(expected, actual, check_names=False, rtol=1e-6)
 
 
 def test_aggregate_cap_range_growths_success(df_long):
@@ -127,12 +125,12 @@ def test_aggregate_cap_range_growths_success(df_long):
     # second row
     expected = pd.Series([np.nan, np.nan, -1.000000], index=df_growth.columns)
     actual = df_growth.loc[pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC"), :]
-    pd.testing.assert_series_equal(expected, actual, check_names=False)
+    pd.testing.assert_series_equal(expected, actual, check_names=False, rtol=1e-6)
 
     # third row
     expected = pd.Series([0.666667, 0.666667, 0.666667], index=df_growth.columns)
     actual = df_growth.loc[pd.Timestamp("1970-01-01 00:10:00+0000", tz="UTC"), :]
-    pd.testing.assert_series_equal(expected, actual, check_names=False)
+    pd.testing.assert_series_equal(expected, actual, check_names=False, rtol=1e-6)
 
 
 def test_aggregate_cap_range_inflections_with_defaults_success(df_long):
@@ -142,4 +140,4 @@ def test_aggregate_cap_range_inflections_with_defaults_success(df_long):
     # third row
     expected = pd.Series([np.nan, np.nan, 0.01], index=df_inflection.columns)
     actual = df_inflection.loc[pd.Timestamp("1970-01-01 00:10:00+0000", tz="UTC"), :]
-    pd.testing.assert_series_equal(expected, actual, check_names=False)
+    pd.testing.assert_series_equal(expected, actual, check_names=False, rtol=1e-6)
