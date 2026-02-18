@@ -9,6 +9,7 @@ from marketflows._helpers import validate_file
 _MAX_KEY_FILE_BYTES = 1024 * 1024
 _DEFAULT_API_KEY_FILENAME = "api_key.txt"
 
+
 def read_api_key(api_key_path: Path | None = None) -> str:
     """
     Read the API key from file.

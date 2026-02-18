@@ -6,7 +6,12 @@ import pandas as pd
 
 
 def validate_file(file_path: Path) -> None:
+    """Validate that file exists and is not directory.
 
+    Raises:
+        FileNotFoundError: If file does not exist.
+        IsADirectoryError: If is a directory.
+    """
     # check that file exists
     if not file_path.exists():
         raise FileNotFoundError(file_path)
@@ -24,6 +29,13 @@ def find_first_valid_time(
     For time to be valid, all values in a row must be a number.  If one of the columns
     has no valid data, it will be ignored.  If no columns are supplied, then all
     columns are used.
+
+    Examples:
+        >>> import pandas as pd
+        >>> idx = pd.date_range("2020-01-01", periods=3, freq="1s", tz="UTC")
+        >>> df = pd.DataFrame({"a": [None, 1.0, 2.0], "b": [None, None, 3.0]}, index=idx)
+        >>> find_first_valid_time(df) == idx[2]
+        True
     """
     if columns is None:
         columns = df.columns.to_list()
@@ -41,13 +53,20 @@ def find_last_valid_time(df: pd.DataFrame) -> pd.Timestamp | None:
 
     For time to be valid, all values in a row must be a number.  If one of the columns
     has no valid data, it will be ignored.
+
+    Examples:
+        >>> import pandas as pd
+        >>> idx = pd.date_range("2020-01-01", periods=3, freq="1s", tz="UTC")
+        >>> df = pd.DataFrame({"a": [1.0, 2.0, None], "b": [1.0, 2.0, 3.0]}, index=idx)
+        >>> find_last_valid_time(df) == idx[1]
+        True
     """
     last_indices = df.apply(lambda x: x.last_valid_index())
     valid_indices = last_indices.dropna()
     if valid_indices.empty:
         return None
     else:
-        return valid_indices.max()
+        return valid_indices.min()
 
 
 def name_column(
@@ -57,7 +76,12 @@ def name_column(
     ema_period: int = 1,
     diff_order: int = 0,
 ) -> str:
-    """Create name for column with base currency."""
+    """Create name for column with base currency.
+
+    Examples:
+        >>> name_column(original_column="ai", base_asset="us-dollar", ema_period=3, diff_order=1)
+        'ai_by_us-dollar_ema3_growth'
+    """
     column = str(original_column)
     column += "_by_" + base_asset
 
@@ -114,23 +138,30 @@ def split_column(column: str) -> dict[str, str]:
 def _order_suffixes(column: str) -> str:
     """Given a column name with suffixes, return a column with suffixes in deterministic
     order."""
-    suffixes = column.split("_")
-    prefix = suffixes[0]
-    suffixes = suffixes[1:]
+    parts = column.split("_")
+    prefix, suffixes = parts[0], parts[1:]
 
     try:
-        base_asset = "_" + suffixes[suffixes.index("by") + 1]
+        base_asset = suffixes[suffixes.index("by") + 1]
     except ValueError:
         base_asset = ""
 
     diff_order = ""
     for suffix in suffixes:
-        if suffix == "growth" or suffix == "inflection" or "deriv" in suffix:
-            diff_order = "_" + str(suffix)
+        if suffix == "growth" or suffix == "inflection" or suffix.startswith("deriv"):
+            diff_order = str(suffix)
 
     ema_period = ""
     for suffix in suffixes:
         if suffix[:3] == "ema":
-            ema_period = "_" + str(suffix)
+            ema_period = str(suffix)
 
-    return f"{prefix}_by{base_asset}{ema_period}{diff_order}"
+    out = f"{prefix}"
+    if base_asset:
+        out += f"_by_{base_asset}"
+    if ema_period:
+        out += f"_{ema_period}"
+    if diff_order:
+        out += f"_{diff_order}"
+
+    return out
