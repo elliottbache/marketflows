@@ -21,54 +21,6 @@ def validate_file(file_path: Path) -> None:
         raise IsADirectoryError(file_path)
 
 
-def find_first_valid_time(
-    df: pd.DataFrame, *, columns: list[str] | None = None
-) -> pd.Timestamp | None:
-    """Find first valid time for given dataframe.
-
-    For time to be valid, all values in a row must be a number.  If one of the columns
-    has no valid data, it will be ignored.  If no columns are supplied, then all
-    columns are used.
-
-    Examples:
-        >>> import pandas as pd
-        >>> idx = pd.date_range("2020-01-01", periods=3, freq="1s", tz="UTC")
-        >>> df = pd.DataFrame({"a": [None, 1.0, 2.0], "b": [None, None, 3.0]}, index=idx)
-        >>> find_first_valid_time(df) == idx[2]
-        True
-    """
-    if columns is None:
-        columns = df.columns.to_list()
-
-    first_indices = df[columns].apply(lambda x: x.first_valid_index())
-    valid_indices = first_indices.dropna()
-    if valid_indices.empty:
-        return None
-    else:
-        return valid_indices.max()
-
-
-def find_last_valid_time(df: pd.DataFrame) -> pd.Timestamp | None:
-    """Find last valid time for given dataframe.
-
-    For time to be valid, all values in a row must be a number.  If one of the columns
-    has no valid data, it will be ignored.
-
-    Examples:
-        >>> import pandas as pd
-        >>> idx = pd.date_range("2020-01-01", periods=3, freq="1s", tz="UTC")
-        >>> df = pd.DataFrame({"a": [1.0, 2.0, None], "b": [1.0, 2.0, 3.0]}, index=idx)
-        >>> find_last_valid_time(df) == idx[1]
-        True
-    """
-    last_indices = df.apply(lambda x: x.last_valid_index())
-    valid_indices = last_indices.dropna()
-    if valid_indices.empty:
-        return None
-    else:
-        return valid_indices.min()
-
-
 def name_column(
     *,
     original_column: str,
@@ -98,41 +50,6 @@ def name_column(
         column += "_deriv" + str(diff_order)
 
     return _order_suffixes(column).strip()
-
-
-def split_column(column: str) -> dict[str, str]:
-    """Take column name and extract its different parameters."""
-    substrings = column.split("_")
-
-    column_params = dict()
-    column_params["group"] = substrings[0]
-    substrings = substrings[1:]
-    while len(substrings) > 0:
-        if substrings[0] == "by":
-            column_params["base_asset"] = substrings[1]
-            substrings = substrings[1:]
-
-        elif substrings[0].startswith("ema"):
-            column_params["ema_period"] = substrings[0][len("ema") :]
-
-        elif substrings[0].startswith("growth"):
-            column_params["diff_order"] = "1"
-
-        elif substrings[0].startswith("inflection"):
-            column_params["diff_order"] = "2"
-
-        elif substrings[0].startswith("deriv"):
-            column_params["diff_order"] = substrings[0][len("deriv") :]
-
-        elif substrings[0] == "unit":
-            column_params["is_unit"] = "True"
-
-        substrings = substrings[1:]
-
-    if "is_unit" not in column_params:
-        column_params["is_unit"] = "False"
-
-    return column_params
 
 
 def _order_suffixes(column: str) -> str:
@@ -165,3 +82,30 @@ def _order_suffixes(column: str) -> str:
         out += f"_{diff_order}"
 
     return out
+
+
+def find_first_valid_time(
+    df: pd.DataFrame, *, columns: list[str] | None = None
+) -> pd.Timestamp | None:
+    """Find first valid time for given dataframe.
+
+    For time to be valid, all values in a row must be a number.  If one of the columns
+    has no valid data, it will be ignored.  If no columns are supplied, then all
+    columns are used.
+
+    Examples:
+        >>> import pandas as pd
+        >>> idx = pd.date_range("2020-01-01", periods=3, freq="1s", tz="UTC")
+        >>> df = pd.DataFrame({"a": [None, 1.0, 2.0], "b": [None, None, 3.0]}, index=idx)
+        >>> find_first_valid_time(df) == idx[2]
+        True
+    """
+    if columns is None:
+        columns = df.columns.to_list()
+
+    first_indices = df[columns].apply(lambda x: x.first_valid_index())
+    valid_indices = first_indices.dropna()
+    if valid_indices.empty:
+        return None
+    else:
+        return valid_indices.max()

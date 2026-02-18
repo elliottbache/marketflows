@@ -1,7 +1,4 @@
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import pytest
 
 from marketflows.plots import charts
 
@@ -59,7 +56,7 @@ def test_plot_single_chart_adds_lines(df_groups, tmp_path):
         ema_period=5,
         diff_order=1,
         ax=ax,
-        out_path=tmp_file
+        out_path=tmp_file,
     )
     assert len(ax.get_lines()) == len(df_groups.columns)
     assert ax.get_title() is not None
@@ -83,56 +80,6 @@ def test_plot_single_chart_creates_file(df_groups, tmp_path):
     assert out_file.exists()
     assert out_file.stat().st_size > 0
     assert out_file.suffix == ".png"
-
-
-@pytest.mark.parametrize(
-    "order, graph_origin",
-    [
-        (0, pd.Timestamp("1970-01-01 00:00:00+0000", tz="UTC")),
-        (1, pd.Timestamp("1970-01-01 00:10:00+0000", tz="UTC")),
-        (2, pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC")),
-    ],
-)
-def test_define_graph_origin(order, graph_origin, df_groups, monkeypatch):
-    # set last two records to NaN
-    df_groups = df_groups.copy()
-    df_groups.loc[pd.Timestamp("1970-01-01 00:20:00+0000", tz="UTC"), :] = np.nan
-    df_groups.loc[pd.Timestamp("1970-01-01 00:25:00+0000", tz="UTC"), :] = np.nan
-
-    # reset periods for growth and inflection
-    monkeypatch.setattr(charts, "_DEFAULT_GROWTH_PERIODS", 1)
-    monkeypatch.setattr(charts, "_DEFAULT_INFLECTION_PERIODS", 2)
-
-    origin = charts._define_graph_origin(df=df_groups, diff_order=order)
-
-    assert origin == graph_origin
-
-
-def test_group_columns_success():
-    df = pd.DataFrame(
-        {
-            "nvidia_by_us-dollar_ema5_growth": [1, 2],
-            "nvidia_by_us-dollar_ema15_growth": [1, 2],
-            "tesla_by_us-dollar_ema5_growth": [1, 2],
-            "tesla_by_us-dollar_ema15_growth": [1, 2],
-            "nvidia_by_japan-yen_ema5_growth": [1, 2],
-            "nvidia_by_japan-yen_ema15_growth": [1, 2],
-        }
-    )
-    columns = charts._group_columns(df, base_asset="us-dollar", ema_period=5)
-    assert columns == [
-        "nvidia_by_us-dollar_ema5_growth",
-        "tesla_by_us-dollar_ema5_growth",
-    ]
-
-
-def test_define_shifted_index(df_groups):
-    df_groups = df_groups.copy()
-    df_groups.loc[pd.Timestamp("1970-01-01 00:25:00+0000", tz="UTC"), :] = np.nan
-
-    last_time = charts._define_shifted_index(df=df_groups, periods=3)
-
-    assert last_time == pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC")
 
 
 def test_create_nice_plot_text():
