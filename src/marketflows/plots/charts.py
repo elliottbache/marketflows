@@ -1,6 +1,7 @@
 import logging
 import math
 from pathlib import Path
+from typing import cast
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -39,35 +40,16 @@ def plot_charts(
     """Plot all charts for flow type.
 
     Args:
+        category: category of chart used as prefix in title and filename
         df: DataFrame with all data we want to use
         groups: list of group names that we want to plot.  If the data for a group is
             not in df, this group is not plotted.
+        symbols: symbol for each asset/group
         base_assets: list of base assets
         diff_orders: list of derivative orders
         ema_periods: list of ema periods
 
     """
-    """# ERASE ME!!
-    import pickle
-    with open("plot_charts.pkl", "wb") as f:
-        pickle.dump(category, f)
-        pickle.dump(df, f)
-        pickle.dump(groups, f)
-        pickle.dump(symbols, f)
-        pickle.dump(base_assets, f)
-        pickle.dump(diff_orders, f)
-        pickle.dump(ema_periods, f)"""
-
-    """import pickle
-    with open("plot_charts.pkl", "rb") as f:
-        category = pickle.load(f)
-        df = pickle.load(f)
-        groups = pickle.load(f)
-        symbols = pickle.load(f)
-        base_assets = pickle.load(f)
-        diff_orders = pickle.load(f)
-        ema_periods = pickle.load(f)"""
-
     for base_asset in base_assets:
         for diff_order in diff_orders:
             for ema_period in ema_periods:
@@ -108,11 +90,10 @@ def _plot_single_chart(
     plt.rcParams["figure.figsize"] = [_DEFAULT_X_SIZE, _DEFAULT_Y_SIZE]
 
     # create plot
-    fig: Figure | SubFigure
     if ax is None:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(_DEFAULT_X_SIZE, _DEFAULT_Y_SIZE))
     else:
-        fig = ax.figure
+        fig = cast(Figure, ax.figure)
 
     igroup = 0
     min_mc, max_mc = np.inf, -np.inf
@@ -151,6 +132,9 @@ def _plot_single_chart(
 
         ax.plot(x, y, marker=marker, label=label)
 
+    if igroup == 0:
+        raise ValueError("No series to plot (no matching columns).")
+
     # beautify the x-labels
     fig.autofmt_xdate()
 
@@ -182,9 +166,8 @@ def _plot_single_chart(
 
     # create file
     if out_path is None:
-        plot_folder = Path("plots")
-        if not plot_folder.is_dir():
-            Path.mkdir(plot_folder)
+        plot_folder = Path("output_plots")
+        plot_folder.mkdir(parents=True, exist_ok=True)
         plot_filename = _create_nice_plot_text(
             text_type="file_name",
             group=category,
@@ -194,7 +177,7 @@ def _plot_single_chart(
         )
         out_path = plot_folder / Path(plot_filename + ".png")
 
-    fig.figure.savefig(out_path)
+    fig.savefig(out_path)
     # plt.show()
 
     plt.close(fig.figure)
@@ -323,7 +306,12 @@ def _define_shifted_index(*, df: pd.DataFrame, periods: int) -> pd.Timestamp | N
 
 
 def _define_marker(idx: int = 0) -> str:
-    """Define the marker for this series."""
+    """Define the marker for this series.
+
+    Examples:
+        >>> [_define_marker(i) for i in range(5)]
+        ['o', 's', 'P', 'v', '*']
+    """
     if idx % 5 == 0:
         return "o"
     elif idx % 5 == 1:
@@ -339,7 +327,16 @@ def _define_marker(idx: int = 0) -> str:
 
 
 def _define_ncol(groups: list[str]) -> int:
-    """Define number of columns in legend."""
+    """Define number of columns in legend.
+
+    Examples:
+        >>> _define_ncol(["a"])
+        1
+        >>> _define_ncol(list("abcdefgh"))  # 8 assets, 8 per column
+        1
+        >>> _define_ncol(list("abcdefghi"))  # 9 assets -> 2 columns
+        2
+    """
     return max(1, math.ceil(len(groups) / _DEFAULT_ASSETS_PER_COLUMN))
 
 
@@ -366,6 +363,14 @@ def _create_nice_plot_text(
 
     Returns:
         string to be used for title or file name
+
+    Examples:
+        >>> _create_nice_plot_text(text_type="file_name", group="narratives")
+        'narratives_MC_by_us-dollar'
+        >>> _create_nice_plot_text(text_type="plot_title", group="narratives")
+        'narratives MC by us-dollar'
+        >>> _create_nice_plot_text(text_type="file_name", group="narratives", diff_order=1)
+        'narratives_MC_by_us-dollar_growth_smooth10'
     """
     plot_text = name_column(
         original_column="MC",
