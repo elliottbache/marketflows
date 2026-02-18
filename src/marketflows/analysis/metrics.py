@@ -47,7 +47,7 @@ def calculate_group_metrics(
     diff_orders = _initialize_diff_orders(analysis_config.diff_orders)
     df_base = _initialize_bases(base_assets, df_base)
 
-    df_out = pd.DataFrame(index=df_groups.index)
+    df_list = list()
     for base_asset in base_assets:
         # first normalize each group with base assets
         df = _normalize_df_with_base_asset(
@@ -69,7 +69,14 @@ def calculate_group_metrics(
             first_valid_record = pd.to_numeric(
                 df.at[first_valid_time, group_column], errors="coerce"
             )
-            df[group_column] = df[group_column] / first_valid_record
+            if pd.isna(first_valid_record):
+                valid_time = find_first_valid_time(df_groups[[group]])
+                first_valid_record = df_groups.at[valid_time, group]
+
+            if first_valid_record == 0:
+                df[group_column] = np.nan
+            else:
+                df[group_column] = df[group_column] / first_valid_record
 
             df = _drop_non_number_columns(df)
 
@@ -94,8 +101,9 @@ def calculate_group_metrics(
                             diff_order=diff_order,
                             smooth_ema=analysis_config.smooth_ema,
                         )
+        df_list.append(df)
 
-        df_out = pd.concat([df_out, df], axis=1)
+    df_out = pd.concat(df_list, axis=1)
 
     # add columns normalized with values between 0 and 1 across groups at each timestep
     df_out = pd.concat([df_out, _normalize_by_current_timestep(df_out)], axis=1)
@@ -180,6 +188,7 @@ def calculate_range_metrics(
         )
 
     df_out = pd.DataFrame(index=df_ranges.index)
+    df_list = list()
     # calculate derivatives
     for diff_order in diff_orders:
 
@@ -200,9 +209,9 @@ def calculate_range_metrics(
             )
 
             first_valid_time = first_valid_times[base_asset]
-            for range in df_ranges.columns:
+            for bucket in df_ranges.columns:
                 range_column = name_column(
-                    original_column=range, base_asset=base_asset, diff_order=diff_order
+                    original_column=bucket, base_asset=base_asset, diff_order=diff_order
                 )
 
                 # skip columns with no valid data
@@ -211,15 +220,18 @@ def calculate_range_metrics(
 
                 # define normalizing quantity using first valid record
                 first_valid_record = pd.to_numeric(
-                    df_ranges.at[first_valid_time, range], errors="coerce"
+                    df_ranges.at[first_valid_time, bucket], errors="coerce"
                 )
                 if pd.isna(first_valid_record):
-                    valid_time = find_first_valid_time(df_ranges[[range]])
-                    first_valid_record = df_ranges.at[valid_time, range]
+                    valid_time = find_first_valid_time(df_ranges[[bucket]])
+                    first_valid_record = df_ranges.at[valid_time, bucket]
 
-                # normalize range (for this base asset) with first_valid_time of
+                # normalize bucket (for this base asset) with first_valid_time of
                 # original data
-                df[range_column] = df[range_column] / first_valid_record
+                if first_valid_record == 0:
+                    df[range_column] = np.nan
+                else:
+                    df[range_column] = df[range_column] / first_valid_record
 
                 df = _drop_non_number_columns(df)
 
@@ -228,13 +240,15 @@ def calculate_range_metrics(
                     if ema_period > 1:
                         df = _calculate_ema(
                             df=df,
-                            group=range,
+                            group=bucket,
                             base_asset=base_asset,
                             ema_period=ema_period,
                             diff_order=diff_order,
                         )
 
-            df_out = pd.concat([df_out, df], axis=1)
+            df_list.append(df)
+
+    df_out = pd.concat(df_list, axis=1)
 
     # add columns normalized with values between 0 and 1 across groups at each timestep
     df_out = pd.concat([df_out, _normalize_by_current_timestep(df_out)], axis=1)
@@ -247,6 +261,16 @@ def _initialize_ema_periods(ema_periods: list[int] | None = None) -> list[int]:
 
     Raises:
         TypeError: if EMA periods are not all integers
+
+    Examples:
+        >>> _initialize_ema_periods(None)
+        [1]
+        >>> _initialize_ema_periods([])
+        [1]
+        >>> _initialize_ema_periods([10, 20])
+        [1, 10, 20]
+        >>> _initialize_ema_periods([1, 5])
+        [1, 5]
     """
     if ema_periods is None or not ema_periods:
         ema_periods = [1]
@@ -265,6 +289,18 @@ def _initialize_diff_orders(diff_orders: list[int] | None = None) -> list[int]:
 
     Raises:
         TypeError: if differentiation orders are not all integers
+
+    Examples:
+        >>> _initialize_diff_orders(None)
+        [0, 1, 2]
+        >>> _initialize_diff_orders([])
+        [0, 1, 2]
+        >>> _initialize_diff_orders([0])
+        [0]
+        >>> _initialize_diff_orders([2])
+        [0, 1, 2]
+        >>> _initialize_diff_orders([1, 3])
+        [0, 1, 2, 3]
     """
     if diff_orders is None or not diff_orders:
         return [0, 1, 2]
@@ -464,5 +500,15 @@ def _normalize_by_current_timestep(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _get_suffix(column: str) -> str:
-    """Given a column name with a suffix, return the suffix."""
-    return "_" + column.split("_", maxsplit=1)[1]
+    """Given a column name with a suffix, return the suffix.
+
+    Examples:
+        >>> _get_suffix("btc_by_us-dollar")
+        '_by_us-dollar'
+        >>> _get_suffix("1e9_growth_by_us-dollar")
+        '_growth_by_us-dollar'
+    """
+    parts = column.split("_", maxsplit=1)
+    if len(parts) < 2:
+        raise ValueError("Column must have suffix starting with '_by'.")
+    return "_" + parts[1]
