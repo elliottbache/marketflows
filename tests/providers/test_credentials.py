@@ -37,3 +37,10 @@ class TestReadApiKey:
         # check that we read the same api_key from the file
         with pytest.raises(exc, match=exc_text):
             _credentials.read_api_key(tmp_path / api_key_file)
+
+    def test_read_api_key_too_large(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(_credentials, "_MAX_KEY_FILE_BYTES", 1)
+        p = tmp_path / "api_key.txt"
+        p.write_text("ab", encoding="utf-8")  # 2 bytes
+        with pytest.raises(ValueError, match="API key file too large"):
+            _credentials.read_api_key(p)

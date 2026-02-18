@@ -7,7 +7,7 @@ from pathlib import Path
 from marketflows._helpers import validate_file
 
 _MAX_KEY_FILE_BYTES = 1024 * 1024
-
+_DEFAULT_API_KEY_FILENAME = "api_key.txt"
 
 def read_api_key(api_key_path: Path | None = None) -> str:
     """
@@ -29,7 +29,7 @@ def read_api_key(api_key_path: Path | None = None) -> str:
     """
     # if no file path is provided, then it is api_key.txt in cwd
     if api_key_path is None:
-        api_key_path = Path.cwd() / "api_key.txt"
+        api_key_path = Path.cwd() / _DEFAULT_API_KEY_FILENAME
 
     # check that file is valid
     try:
@@ -41,7 +41,7 @@ def read_api_key(api_key_path: Path | None = None) -> str:
 
     # check that file is not larger than allowed read size
     if api_key_path.stat().st_size > _MAX_KEY_FILE_BYTES:
-        raise ValueError("API key file too large.")
+        raise ValueError("API key file too large(> {_MAX_KEY_FILE_BYTES} bytes).")
 
     api_key = api_key_path.read_text("utf-8").strip()
 
