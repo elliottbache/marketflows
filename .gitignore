@@ -218,4 +218,4 @@ api_key.txt
 *.ipynb
 
 # Plot outputs
-plots
+output_plots
