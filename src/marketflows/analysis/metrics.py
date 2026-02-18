@@ -477,7 +477,7 @@ def _normalize_by_current_timestep(df: pd.DataFrame) -> pd.DataFrame:
     """
     # create dict of all suffixes to remove duplicates but keep order
     suffixes = dict.fromkeys(
-        [_get_suffix(column) for column in df.columns if "_by" in column]
+        [_get_suffix(column) for column in df.columns if "_by_" in column]
     )
 
     # find min and max in each row for each group of suffixes
