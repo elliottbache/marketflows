@@ -11,50 +11,20 @@ Behavior:
 - A stderr handler is attached at ``WARNING`` and above.
 - Python warnings are routed through logging (via ``logging.captureWarnings``).
 
-In tutorial mode (``tutorial=True``), log timestamps are made deterministic so
+In tutorial mode (``is_tutorial=True``), log timestamps are made deterministic so
 test outputs and tutorial logs are reproducible.
 """
 
 import logging
 import os
 import pathlib
+import re
 import sys
 from logging.handlers import RotatingFileHandler
 
 
-def _set_formatter(tutorial: bool, handler: logging.Handler) -> None:
-    date = "2000-01-01T00:00:00+0100" if tutorial else "{asctime}"
-    handler.setFormatter(
-        logging.Formatter(
-            fmt=date + " {levelname} {name}: {message}",
-            datefmt="%Y-%m-%dT%H:%M:%S%z",
-            style="{",
-        )
-    )
-
-
-def _default_log_dir() -> pathlib.Path:
-    """Return an OS-appropriate log directory."""
-    if os.name == "nt":
-        base = pathlib.Path(
-            os.getenv("LOCALAPPDATA", pathlib.Path.home() / "AppData" / "Local")
-        )
-    else:
-        # Linux / WSL: prefer XDG state dir
-        base = pathlib.Path(
-            os.getenv("XDG_STATE_HOME", pathlib.Path.home() / ".local" / "state")
-        )
-
-    log_dir = base / "marketflows" / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-
-    print(f"\nLogging to {log_dir}")
-
-    return log_dir
-
-
 def configure_logging(
-    *, level: str = "INFO", node: str = "CoinGecko", tutorial: bool = False
+    *, level: str = "INFO", node: str = "", is_tutorial: bool = False
 ) -> None:
     """Configure root logging for the application.
 
@@ -73,17 +43,11 @@ def configure_logging(
         level (str): Logging level name (e.g., ``"DEBUG"``, ``"INFO"``).
         node (str): Logical node name used for the log filename (e.g., ``"CoinGecko"`` or
             ``"TD Ameritrade"``).
-        tutorial (bool): If True, use deterministic timestamps and overwrite the log
+        is_tutorial (bool): If True, use deterministic timestamps and overwrite the log
             file each run.
 
     Raises:
         ValueError: If ``level`` is not a valid logging level name.
-
-    Examples:
-        >>> import logging
-        >>> from marketflows.logging_utils import configure_logging
-        >>> configure_logging(level="INFO", node="demo", tutorial=True)
-        >>> logging.getLogger("demo").info("hello")
     """
     # route Python warnings through logging.
     logging.captureWarnings(True)
@@ -116,16 +80,18 @@ def configure_logging(
     # create err handler (WARNING and above)
     err_handler = logging.StreamHandler(stream=sys.stderr)
     err_handler.setLevel("WARNING")
-    _set_formatter(tutorial, err_handler)
+    _set_formatter(err_handler, is_tutorial=is_tutorial)
     root.addHandler(err_handler)
 
     # define and create folder for saving log
-    log_file = pathlib.Path(node).with_suffix(".log")
+    if not node:
+        node = "marketflows"
+    log_file = pathlib.Path(_sanitize_node(node)).with_suffix(".log")
     fn = _default_log_dir() / log_file
 
     # for tutorial we don't want setup tests to be written to the log file, so we
     # use write mode and only keep the last written log
-    if tutorial:
+    if is_tutorial:
         handler = logging.FileHandler(filename=fn, mode="w")
     else:
         handler = RotatingFileHandler(
@@ -133,6 +99,55 @@ def configure_logging(
         )
 
     # create debug handler (all messages)
-    _set_formatter(tutorial, handler)
+    _set_formatter(handler, is_tutorial=is_tutorial)
     root.addHandler(handler)
     handler.setLevel(numeric_level)
+
+
+def _sanitize_node(node: str = "") -> str:
+    """Sanitize node name, replacing '/' and '\' before replacing invalid characters."""
+    if not node:
+        return ""
+
+    _ALLOWED_CHARACTERS = re.compile(r"[^a-zA-Z0-9_.-]+")
+
+    # replace / and \ with _
+    node = node.replace("/", "_").replace("\\", "_").strip()
+
+    # replace disallowed characters with _
+    node = _ALLOWED_CHARACTERS.sub("_", node)
+
+    # remove repeated _ and remove leading and trailing special characters
+    node = re.sub(r"_+", "_", node).strip("._-")
+
+    return node
+
+
+def _set_formatter(handler: logging.Handler, *, is_tutorial: bool = False) -> None:
+    # in tutorial mode set fixed datetime for deterministic log
+    datetime = "2000-01-01T00:00:00+0100" if is_tutorial else "{asctime}"
+    handler.setFormatter(
+        logging.Formatter(
+            fmt=datetime + " {levelname} {name}: {message}",
+            datefmt="%Y-%m-%dT%H:%M:%S%z",
+            style="{",
+        )
+    )
+
+
+def _default_log_dir() -> pathlib.Path:
+    """Return an OS-appropriate log directory."""
+    if os.name == "nt":
+        base = pathlib.Path(
+            os.getenv("LOCALAPPDATA", pathlib.Path.home() / "AppData" / "Local")
+        )
+    else:
+        # Linux / WSL: prefer XDG state dir
+        base = pathlib.Path(
+            os.getenv("XDG_STATE_HOME", pathlib.Path.home() / ".local" / "state")
+        )
+
+    log_dir = base / "marketflows" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    return log_dir
