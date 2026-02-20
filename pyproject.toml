@@ -18,7 +18,8 @@ keywords = ["narratives", "capital", "flows"]
 dependencies = [
   "pandas>=2.0",
   "requests",
-  "matplotlib"
+  "matplotlib",
+  "humanize"
 ]
 
 # Optional extras for dev tools

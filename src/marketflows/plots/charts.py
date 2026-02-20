@@ -10,7 +10,7 @@ import pandas as pd
 from matplotlib.figure import Figure
 
 from marketflows._helpers import name_column
-from marketflows.plots._helpers import define_graph_origin
+from marketflows.plots._helpers import create_nice_plot_text, define_graph_origin
 
 _DEFAULT_X_SIZE = 6.4 * 1.5  # window horizontal size
 _DEFAULT_Y_SIZE = 4.8 * 1.5  # window vertical size
@@ -149,7 +149,7 @@ def _plot_single_chart(
     ax.grid(True, which="both")
     ax.legend(loc="upper left", ncol=_define_ncol(groups))
     ax.set_title(
-        _create_nice_plot_text(
+        create_nice_plot_text(
             text_type="plot_title",
             group=category,
             base_asset=base_asset,
@@ -162,7 +162,7 @@ def _plot_single_chart(
     if out_path is None:
         plot_folder = Path("output_plots")
         plot_folder.mkdir(parents=True, exist_ok=True)
-        plot_filename = _create_nice_plot_text(
+        plot_filename = create_nice_plot_text(
             text_type="file_name",
             group=category,
             base_asset=base_asset,
@@ -212,54 +212,3 @@ def _define_ncol(groups: list[str]) -> int:
         2
     """
     return max(1, math.ceil(len(groups) / _DEFAULT_ASSETS_PER_COLUMN))
-
-
-def _create_nice_plot_text(
-    *,
-    text_type: str,
-    group: str,
-    base_asset: str = "us-dollar",
-    diff_order: int = 0,
-    ema_period: int = 1,
-    smooth_periods: int = 10,
-) -> str:
-    """Create nice plot text for title or file name.
-
-    Args:
-        text_type: ``plot_title`` or ``file_name``
-        group: first string in text
-        base_asset: base asset to use
-        diff_order: differentiation order
-        ema_period: EMA periods (not the smoothing EMA periods)
-        smooth_periods: EMA periods used for smoothing after all calculations.  These
-            are not used for ranges since EMA periods are not used before
-            differentiation as for narratives and asset groups.
-
-    Returns:
-        string to be used for title or file name
-
-    Examples:
-        >>> _create_nice_plot_text(text_type="file_name", group="narratives")
-        'narratives_MC_by_us-dollar'
-        >>> _create_nice_plot_text(text_type="plot_title", group="narratives")
-        'narratives MC by us-dollar'
-        >>> _create_nice_plot_text(text_type="file_name", group="narratives", diff_order=1)
-        'narratives_MC_by_us-dollar_growth_smooth10'
-    """
-    plot_text = name_column(
-        original_column="MC",
-        base_asset=base_asset,
-        ema_period=ema_period,
-        diff_order=diff_order,
-    )
-    plot_text = group + "_" + plot_text
-
-    if text_type == "file_name":
-        if diff_order > 0:
-            plot_text += "_smooth" + str(smooth_periods)
-    elif text_type == "plot_title":
-        plot_text = " ".join(plot_text.split("_"))
-    else:
-        raise ValueError("text_type must be plot_title or file_name.")
-
-    return plot_text.strip()
