@@ -27,12 +27,13 @@ def name_column(
     base_asset: str = "us-dollar",
     ema_period: int = 1,
     diff_order: int = 0,
+    is_unit: bool = False,
 ) -> str:
-    """Create name for column with base currency.
+    """Create name for column with base currency, EMA period and diff order.
 
     Examples:
-        >>> name_column(original_column="ai", base_asset="us-dollar", ema_period=3, diff_order=1)
-        'ai_by_us-dollar_ema3_growth'
+        >>> name_column(original_column="ai", base_asset="us-dollar", ema_period=3, diff_order=1, is_unit=True)
+        'ai_by_us-dollar_ema3_growth_unit'
     """
     column = str(original_column)
     column += "_by_" + base_asset
@@ -49,6 +50,9 @@ def name_column(
     else:
         column += "_deriv" + str(diff_order)
 
+    if is_unit:
+        column += "_unit"
+
     return _order_suffixes(column).strip()
 
 
@@ -63,15 +67,17 @@ def _order_suffixes(column: str) -> str:
     except ValueError:
         base_asset = ""
 
-    diff_order = ""
+    ema_period, diff_order = "", ""
+    is_unit = False
     for suffix in suffixes:
         if suffix == "growth" or suffix == "inflection" or suffix.startswith("deriv"):
             diff_order = str(suffix)
 
-    ema_period = ""
-    for suffix in suffixes:
         if suffix[:3] == "ema":
             ema_period = str(suffix)
+
+        if suffix[:4] == "unit":
+            is_unit = True
 
     out = f"{prefix}"
     if base_asset:
@@ -80,6 +86,8 @@ def _order_suffixes(column: str) -> str:
         out += f"_{ema_period}"
     if diff_order:
         out += f"_{diff_order}"
+    if is_unit:
+        out += "_unit"
 
     return out
 
@@ -109,3 +117,21 @@ def find_first_valid_time(
         return None
     else:
         return valid_indices.max()
+
+
+def snake_case_to_text(in_text: str) -> str:
+    """Convert snake_case text to plain text."""
+    if not in_text:
+        return ""
+
+    parts = in_text.strip().split("_")
+    joined_parts = " ".join(parts).strip()
+
+    if joined_parts:
+        out_text = joined_parts[0].upper()
+        if len(joined_parts) > 1:
+            out_text = out_text + joined_parts[1:]
+    else:
+        out_text = joined_parts
+
+    return out_text

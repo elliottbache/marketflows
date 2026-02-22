@@ -15,10 +15,17 @@ def test_name_column_success():
         base_asset=base_asset,
         ema_period=ema_period,
         diff_order=diff_order,
+        is_unit=True,
     )
     assert (
         column_name
-        == original_column + "_by_" + base_asset + "_ema" + str(ema_period) + "_growth"
+        == original_column
+        + "_by_"
+        + base_asset
+        + "_ema"
+        + str(ema_period)
+        + "_growth"
+        + "_unit"
     )
 
 
@@ -48,3 +55,10 @@ class TestFindFirstValidTime:
         )
         first_valid = plots_helpers.find_first_valid_time(df)
         assert first_valid is None
+
+
+def test_snake_case_to_text_success():
+    column = " _amabyderivzon_ema1.5_deriv200_by_china-yuan__"
+    column_out = _helpers.snake_case_to_text(column)
+
+    assert column_out == "Amabyderivzon ema1.5 deriv200 by china-yuan"

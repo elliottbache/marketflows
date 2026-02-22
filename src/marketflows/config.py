@@ -24,7 +24,7 @@ class ProviderConfig:
     base_assets: list[str]
     narratives: list[str]
     range_lower_limits: list[float]
-    asset_groups: dict[str, set[str]]
+    asset_groups: dict[str, list[str]]
 
 
 @dataclass
@@ -42,6 +42,7 @@ class AnalysisConfig:
     diff_orders: list[int]
     ema_periods: list[int]
     smooth_ema: int
+    is_unit_normalize: bool
 
 
 # add base_assets, diff orders and ema periods initialization here since it is used everywhere
@@ -64,10 +65,10 @@ def load_and_validate_config(
         ["bitcoin"],
         ["made-in-usa", "aave-tokens"],
         [1e9, 1e10],
-        {"Bullmind": {"zano", "superfarm"}, "cryptocapo": {"haha", "mstr2100"}},
+        {"Bullmind": ["zano", "superfarm"], "cryptocapo": ["haha", "mstr2100"]},
     )
     # this is a test provider_config.  Erase this later!!!
-    analysis_config = AnalysisConfig([0, 1, 2], [20], 10)
+    analysis_config = AnalysisConfig([0, 1, 2], [20], 10, True)
 
     return provider_config, analysis_config
 
@@ -83,6 +84,8 @@ def initialize_base_assets(base_assets: list[str] | None = None) -> list[str]:
 
 
 # function read config file
+
+# read hours ago for tables
 
 # function define graphs we want from matrix or cherry-pick
 

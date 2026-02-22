@@ -1,8 +1,10 @@
 import logging
 
+import numpy as np
 import pandas as pd
 
 from marketflows._helpers import find_first_valid_time, name_column
+from marketflows.types import FlowType
 
 _DEFAULT_GROWTH_PERIODS = 50  # periods in growth window
 _DEFAULT_INFLECTION_PERIODS = 12  # periods in inflection window
@@ -102,6 +104,7 @@ def create_nice_plot_text(
     diff_order: int = 0,
     ema_period: int = 1,
     smooth_periods: int = 10,
+    is_unit: bool = False,
 ) -> str:
     """Create nice plot text for title or file name.
 
@@ -114,6 +117,7 @@ def create_nice_plot_text(
         smooth_periods: EMA periods used for smoothing after all calculations.  These
             are not used for ranges since EMA periods are not used before
             differentiation as for narratives and asset groups.
+        is_unit: is this plot normalized at each time step?
 
     Returns:
         string to be used for title or file name
@@ -123,14 +127,15 @@ def create_nice_plot_text(
         'narratives_MC_by_us-dollar'
         >>> _create_nice_plot_text(text_type="plot_title", group="narratives")
         'narratives MC by us-dollar'
-        >>> _create_nice_plot_text(text_type="file_name", group="narratives", diff_order=1)
-        'narratives_MC_by_us-dollar_growth_smooth10'
+        >>> _create_nice_plot_text(text_type="file_name", group="narratives", diff_order=1, is_unit=True)
+        'narratives_MC_by_us-dollar_growth_smooth10_unit'
     """
     plot_text = name_column(
         original_column="MC",
         base_asset=base_asset,
         ema_period=ema_period,
         diff_order=diff_order,
+        is_unit=is_unit,
     )
     plot_text = group + "_" + plot_text
 
@@ -178,6 +183,58 @@ def split_column(column: str) -> dict[str, str]:
         column_params["is_unit"] = "False"
 
     return column_params
+
+
+def create_label(
+    *,
+    category: str,
+    symbols: dict[str, str],
+    group: str,
+    groups: list[str],
+    flow_type: FlowType,
+) -> str:
+    """Create label.
+
+    Raises:
+        ValueError if flow_type is not narratives, market_cap_ranges, or individual_assets.
+    """
+    if flow_type == "market_cap_ranges":
+        idx = groups.index(group)
+        upper_limit = groups[idx + 1] if idx < len(groups) - 1 else None
+        label = _create_range_label(lower_limit=group, upper_limit=upper_limit)
+    elif flow_type == "individual_assets" and category == "Portfolios":
+        label = group.capitalize()
+    elif flow_type == "individual_assets":
+        label = symbols.get(group, group).upper()
+    elif flow_type == "narratives":
+        if not group:
+            return ""
+        label = group[0].upper()
+        if len(group) > 1:
+            label += group[1:]
+        label = " ".join(" ".join(label.strip().split("_")).strip().split("-"))
+    else:
+        raise ValueError(
+            "flow_type must be narratives, market_cap_ranges, or individual_assets."
+        )
+
+    return label
+
+
+def _create_range_label(*, lower_limit: str, upper_limit: str | None = None) -> str:
+    """Create a range label."""
+    if not _is_float(lower_limit):
+        raise ValueError("lower_limit must be a float.")
+    range_label = _format_market_cap(float(lower_limit))
+
+    range_label += " < MC"
+
+    if upper_limit is not None:
+        if not _is_float(upper_limit):
+            raise ValueError("upper_limit must be a float.")
+        range_label += " < " + _format_market_cap(float(upper_limit))
+
+    return range_label
 
 
 def _make_group_columns(
@@ -236,3 +293,28 @@ def _define_shifted_index(*, df: pd.DataFrame, periods: int) -> pd.Timestamp | N
     indices = df.index.to_list()
 
     return indices[first_index]
+
+
+def _is_float(value: str) -> bool:
+    try:
+        float(value)
+        return np.isfinite(float(value))
+    except (ValueError, TypeError):
+        return False
+
+
+def _format_market_cap(n: float) -> str:
+    """Format a market cap value as an abbreviated string (e.g. 1.2B for 1200000000).
+
+    Raises:
+        ValueError if market cap is negative
+    """
+    if n < 0:
+        raise ValueError("Market cap cannot be negative.")
+
+    for unit in ["", "K", "M", "B", "T"]:
+        if n < 1000.0:
+            # Return as int if it's a clean 100, else 1 decimal
+            return f"{int(n)}{unit}" if n == int(n) else f"{n:.1f}{unit}"
+        n /= 1000.0
+    return f"{n:.1f}P"
