@@ -5,6 +5,7 @@ import pytest
 from matplotlib.table import Table
 
 from marketflows.plots import tables as plots_tables
+from marketflows.types import FlowType
 
 
 @pytest.fixture
@@ -20,8 +21,10 @@ def test_create_category_tables(monkeypatch, df_groups):
 
     def mock_create_table(
         *,
+        flow_type: FlowType,
         category: str,
         base_asset: str,
+        symbols: dict[str, str],
         groups: list[str],
         df: pd.DataFrame,
         hours_ago: list[int],
@@ -31,7 +34,9 @@ def test_create_category_tables(monkeypatch, df_groups):
     monkeypatch.setattr(plots_tables, "_create_table", mock_create_table)
 
     plots_tables.create_category_tables(
+        flow_type="narratives",
         category="Narratives",
+        symbols={"pharma": "Rx", "ai": "AI"},
         groups=["pharma", "ai"],
         base_assets=base_assets,
         df=df_groups,
@@ -60,8 +65,10 @@ class TestCreateTable:
         fig, ax = plt.subplots()
         out_file = tmp_path / "test.png"
         _ = plots_tables._create_table(
+            flow_type="narratives",
             category="Narratives",
             base_asset="us-dollar",
+            symbols={"pharma": "Rx", "ai": "AI"},
             groups=["pharma", "ai"],
             df=df_groups,
             hours_ago=hours_ago,
@@ -101,8 +108,10 @@ class TestCreateTable:
 
         out_file = tmp_path / "test.png"
         out_file = plots_tables._create_table(
+            flow_type="narratives",
             category="Narratives",
             base_asset="us-dollar",
+            symbols={"pharma": "Rx", "ai": "AI"},
             groups=["pharma", "ai"],
             df=df_groups,
             hours_ago=hours_ago,

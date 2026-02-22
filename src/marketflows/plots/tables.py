@@ -12,7 +12,12 @@ from matplotlib import colormaps
 from matplotlib.figure import Figure
 
 from marketflows._helpers import name_column
-from marketflows.plots._helpers import create_nice_plot_text, find_last_valid_time
+from marketflows.plots._helpers import (
+    create_label,
+    create_nice_plot_text,
+    find_last_valid_time,
+)
+from marketflows.types import FlowType
 
 _DEFAULT_HOURS_AGO = [4, 8, 12, 24, 48, 72, 168, 336, 672]
 
@@ -21,7 +26,9 @@ logger = logging.getLogger(__name__)
 
 def create_category_tables(
     *,
+    flow_type: FlowType,
     category: str,
+    symbols: dict[str, str],
     groups: list[str],
     base_assets: list[str],
     df: pd.DataFrame,
@@ -30,7 +37,9 @@ def create_category_tables(
     """Create tables for the specific category.
 
     Args:
+        flow_type: the flow type we want to collect data for
         category: used as prefix for title and file name
+        symbols: symbol for each asset/group
         groups: the labels of the rows in the table
         base_assets: the base assets used to normalize the data
         df: dataframe containing all data (and possibly more)
@@ -42,7 +51,7 @@ def create_category_tables(
     """
 
     """import pickle
-    with open("plot_charts.pkl", "wb") as f:
+    with open("plot_tables.pkl", "wb") as f:
         pickle.dump(category, f)
         pickle.dump(groups, f)
         pickle.dump(base_assets, f)
@@ -50,7 +59,7 @@ def create_category_tables(
         pickle.dump(hours_ago, f)"""
 
     """import pickle
-    with open("plot_charts.pkl", "rb") as f:
+    with open("plot_tables.pkl", "rb") as f:
         category = pickle.load(f)
         groups = pickle.load(f)
         base_assets = pickle.load(f)
@@ -59,8 +68,10 @@ def create_category_tables(
 
     for base_asset in base_assets:
         _create_table(
+            flow_type=flow_type,
             category=category,
             base_asset=base_asset,
+            symbols=symbols,
             groups=groups,
             df=df,
             hours_ago=hours_ago,
@@ -69,8 +80,10 @@ def create_category_tables(
 
 def _create_table(
     *,
+    flow_type: FlowType,
     category: str,
     base_asset: str,
+    symbols: dict[str, str],
     groups: list[str],
     df: pd.DataFrame,
     hours_ago: list[int],
@@ -94,6 +107,14 @@ def _create_table(
 
     # define row names
     row_names = df_gains.columns.to_list()
+    for idx, row_name in enumerate(row_names):
+        row_names[idx] = create_label(
+            category=category,
+            symbols=symbols,
+            group=row_name,
+            groups=groups,
+            flow_type=flow_type,
+        )
 
     # set up cell colors so that largest magnitude defines deepest red or green.  Colors
     # are "symmetric" around white
@@ -208,6 +229,9 @@ def _calculate_groups_gains(
     # create dataframe with percent gains for different offsets
     df_gains_list = list()
     for group in groups:
+        if group not in col_names:
+            continue
+
         gains = _calculate_gains(
             ser=df.loc[:last_time, col_names[group]],
             hours_ago=hours_ago,
