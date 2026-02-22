@@ -90,28 +90,6 @@ def aggregate_groups(
     return df_groups
 
 
-def _validate_assets(
-    assets: set[str], *, df_master: pd.DataFrame, group: str = ""
-) -> None:
-    """Raise if the assets are not in the master dataframe.
-
-    Examples:
-        >>> import pandas as pd
-        >>> df_master = pd.DataFrame({"a": [1.0]})
-        >>> _validate_assets({"a"}, df_master=df_master, group="ok")  # no error
-        >>> _validate_assets({"missing"}, df_master=df_master, group="g1")
-        Traceback (most recent call last):
-        ...
-        ValueError: Master DataFrame does not contain required assets in group.  Group: g1, required assets: {'missing'}
-    """
-    columns_set = set(df_master.columns)
-    if not assets <= columns_set:
-        raise ValueError(
-            f"Master DataFrame does not contain required assets in group.  "
-            f"Group: {group}, required assets: {assets}"
-        )
-
-
 def prepare_cap_ranges(
     *,
     range_lower_limits: list[float],
@@ -155,6 +133,28 @@ def prepare_cap_ranges(
     df_long.index.name = "Datetime"
 
     return df_long
+
+
+def _validate_assets(
+    assets: set[str], *, df_master: pd.DataFrame, group: str = ""
+) -> None:
+    """Raise if the assets are not in the master dataframe.
+
+    Examples:
+        >>> import pandas as pd
+        >>> df_master = pd.DataFrame({"a": [1.0]})
+        >>> _validate_assets({"a"}, df_master=df_master, group="ok")  # no error
+        >>> _validate_assets({"missing"}, df_master=df_master, group="g1")
+        Traceback (most recent call last):
+        ...
+        ValueError: Master DataFrame does not contain required assets in group.  Group: g1, required assets: {'missing'}
+    """
+    columns_set = set(df_master.columns)
+    if not assets <= columns_set:
+        raise ValueError(
+            f"Master DataFrame does not contain required assets in group.  "
+            f"Group: {group}, required assets: {assets}"
+        )
 
 
 def _define_bucket_assets(

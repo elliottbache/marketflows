@@ -10,7 +10,13 @@ import pandas as pd
 from matplotlib.figure import Figure
 
 from marketflows._helpers import name_column
-from marketflows.plots._helpers import create_nice_plot_text, define_graph_origin
+from marketflows.config import AnalysisConfig
+from marketflows.plots._helpers import (
+    create_label,
+    create_nice_plot_text,
+    define_graph_origin,
+)
+from marketflows.types import FlowType
 
 _DEFAULT_X_SIZE = 6.4 * 1.5  # window horizontal size
 _DEFAULT_Y_SIZE = 4.8 * 1.5  # window vertical size
@@ -23,44 +29,50 @@ logger = logging.getLogger(__name__)
 # plot_all_graphs (don't read data, it should be passed in)
 def plot_charts(
     *,
+    flow_type: FlowType,
     category: str,
     df: pd.DataFrame,
     groups: list[str],
     symbols: dict[str, str],
     base_assets: list[str],
-    diff_orders: list[int],
-    ema_periods: list[int],
+    analysis_config: AnalysisConfig,
 ) -> None:
     """Plot all charts for flow type.
 
     Args:
+        flow_type: the flow type we want to collect data for
         category: category of chart used as prefix in title and filename
         df: DataFrame with all data we want to use
         groups: list of group names that we want to plot.  If the data for a group is
             not in df, this group is not plotted.
         symbols: symbol for each asset/group
         base_assets: list of base assets
-        diff_orders: list of derivative orders
-        ema_periods: list of ema periods
-
+        analysis_config: configuration parameters for analysis module
     """
-    for base_asset in base_assets:
-        for diff_order in diff_orders:
-            for ema_period in ema_periods:
-                out_dir = _plot_single_chart(
-                    category=category,
-                    groups=groups,
-                    symbols=symbols,
-                    df=df,
-                    base_asset=base_asset,
-                    ema_period=ema_period,
-                    diff_order=diff_order,
-                )
-                logger.debug(f"{out_dir} created.")
+    # list for plotting unit normalized and non unit normalized
+    is_units = [False, True] if analysis_config.is_unit_normalize else [False]
+
+    for is_unit in is_units:
+        for base_asset in base_assets:
+            for diff_order in analysis_config.diff_orders:
+                for ema_period in analysis_config.ema_periods:
+                    out_dir = _plot_single_chart(
+                        flow_type=flow_type,
+                        category=category,
+                        groups=groups,
+                        symbols=symbols,
+                        df=df,
+                        base_asset=base_asset,
+                        ema_period=ema_period,
+                        diff_order=diff_order,
+                        is_unit=is_unit,
+                    )
+                    logger.debug(f"{out_dir} created.")
 
 
 def _plot_single_chart(
     *,
+    flow_type: FlowType,
     category: str,
     groups: list[str],
     symbols: dict[str, str],
@@ -68,9 +80,10 @@ def _plot_single_chart(
     base_asset: str = "us-dollar",
     ema_period: int = 1,
     diff_order: int = 0,
+    is_unit: bool = False,
     ax: matplotlib.axes.Axes | None = None,
     out_path: Path | None = None,
-) -> Path:
+) -> Path | None:
     """Plot single chart."""
     graph_origin = define_graph_origin(
         df=df,
@@ -98,6 +111,7 @@ def _plot_single_chart(
             base_asset=base_asset,
             ema_period=ema_period,
             diff_order=diff_order,
+            is_unit=is_unit,
         )
 
         # make sure the column exists since columns without valid records should have
@@ -122,12 +136,19 @@ def _plot_single_chart(
         # define label and marker for legend in plot
         igroup += 1
         marker = _define_marker(igroup)
-        label = symbols.get(group, group)
+        label = create_label(
+            category=category,
+            symbols=symbols,
+            group=group,
+            groups=groups,
+            flow_type=flow_type,
+        )
 
         ax.plot(x, y, marker=marker, label=label)
 
     if igroup == 0:
-        raise ValueError("No series to plot (no matching columns).")
+        plt.close(fig.figure)
+        return None
 
     # beautify the x-labels
     fig.autofmt_xdate()
@@ -155,6 +176,7 @@ def _plot_single_chart(
             base_asset=base_asset,
             diff_order=diff_order,
             ema_period=ema_period,
+            is_unit=is_unit,
         )
     )
 
@@ -168,6 +190,7 @@ def _plot_single_chart(
             base_asset=base_asset,
             diff_order=diff_order,
             ema_period=ema_period,
+            is_unit=is_unit,
         )
         out_path = plot_folder / Path(plot_filename + ".png")
 

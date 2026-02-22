@@ -5,6 +5,11 @@ import pytest
 from marketflows.plots import _helpers as plots_helpers
 
 
+@pytest.fixture
+def symbols():
+    return {"nvidia": "NVDA", "tesla": "TSLA", "amazon": "AMZN"}
+
+
 @pytest.mark.parametrize(
     "order, graph_origin",
     [
@@ -84,6 +89,107 @@ def test_split_column_success():
     }
 
 
+@pytest.mark.parametrize(
+    "category, group, groups, flow_type, expected",
+    [
+        (
+            "Equities",
+            "amazon",
+            ["amazon", "tesla", "nvidia"],
+            "individual_assets",
+            "AMZN",
+        ),
+        (
+            "Equities",
+            "alphabet",
+            ["amazon", "tesla", "nvidia"],
+            "individual_assets",
+            "ALPHABET",
+        ),
+        ("Portfolios", "stocks", ["stocks", "bonds"], "individual_assets", "Stocks"),
+        (
+            "Ranges",
+            "1000000.0",
+            ["1000000.0", "10000000.0", "1000000000.0"],
+            "market_cap_ranges",
+            "1M < MC < 10M",
+        ),
+        (
+            "Ranges",
+            "1000000000.0",
+            ["1000000.0", "10000000.0", "1000000000.0"],
+            "market_cap_ranges",
+            "1B < MC",
+        ),
+        (
+            "Narratives",
+            "real-estate",
+            ["amazon", "tesla", "nvidia"],
+            "narratives",
+            "Real estate",
+        ),
+        (
+            "Narratives",
+            "real_estate",
+            ["amazon", "tesla", "nvidia"],
+            "narratives",
+            "Real estate",
+        ),
+    ],
+    ids=[
+        "normal_symbol",
+        "group_not_in_symbols",
+        "normal_portfolios",
+        "normal_range",
+        "top_range",
+        "dash_narrative",
+        "underscore_narrative",
+    ],
+)
+def test_create_label(category, symbols, group, groups, flow_type, expected):
+    assert (
+        plots_helpers.create_label(
+            category=category,
+            symbols=symbols,
+            group=group,
+            groups=groups,
+            flow_type=flow_type,
+        )
+        == expected
+    )
+
+
+@pytest.mark.parametrize(
+    "lower_limit, upper_limit, expected, exc, exc_msg",
+    [
+        ("100000", "10000000", "100K < MC < 10M", None, ""),
+        ("1300000000", None, "1.3B < MC", None, ""),
+        (
+            "-np.inf",
+            "10000000",
+            "100K < MC < 10M",
+            ValueError,
+            "lower_limit must be a float",
+        ),
+        ("100000", "abc", "100K < MC < 10M", ValueError, "upper_limit must be a float"),
+    ],
+    ids=["normal", "no_upper_limit", "invalid_lower_limit", "invalid_upper_limit"],
+)
+def test_create_range_label(lower_limit, upper_limit, expected, exc, exc_msg):
+    if exc is None:
+        assert (
+            plots_helpers._create_range_label(
+                lower_limit=lower_limit, upper_limit=upper_limit
+            )
+            == expected
+        )
+    else:
+        with pytest.raises(exc, match=exc_msg):
+            plots_helpers._create_range_label(
+                lower_limit=lower_limit, upper_limit=upper_limit
+            )
+
+
 def test_make_group_columns_success():
     df = pd.DataFrame(
         {
@@ -111,3 +217,62 @@ def test_define_shifted_index(df_groups):
     last_time = plots_helpers._define_shifted_index(df=df_groups, periods=3)
 
     assert last_time == pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC")
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("123.45", True),
+        ("-0.001", True),
+        ("1e3", True),
+        (".5", True),
+        ("nan", False),
+        ("NaN", False),
+        ("inf", False),
+        ("infinity", False),
+        ("-np.inf", False),
+        ("abc", False),
+        ("12.34.56", False),
+        (None, False),
+        ("", False),
+    ],
+    ids=[
+        "float",
+        "negative",
+        "scientific",
+        "no_leading_decimal",
+        "nan",
+        "NaN",
+        "inf",
+        "infinity",
+        "-np.inf",
+        "plain_text",
+        "extra_decimal",
+        "None",
+        "empty",
+    ],
+)
+def test_is_float(value, expected):
+    assert plots_helpers._is_float(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value, expected, exc, exc_msg",
+    [
+        (1000000000000, "1T", None, None),
+        (1000000000, "1B", None, None),
+        (100000000, "100M", None, None),
+        (1500000, "1.5M", None, None),
+        (950000, "950K", None, None),
+        (500, "500", None, None),
+        (0, "0", None, None),
+        (-10, "", ValueError, "Market cap cannot be negative"),
+    ],
+    ids=["T", "B", "M", "decimal", "K", "no_suffix", "zero", "raise"],
+)
+def test_format_market_cap(value, expected, exc, exc_msg):
+    if exc is None:
+        assert plots_helpers._format_market_cap(value) == expected
+    else:
+        with pytest.raises(exc, match=exc_msg):
+            plots_helpers._format_market_cap(value)
