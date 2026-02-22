@@ -63,9 +63,13 @@ def load_coingecko_data(
     days = provider_config.days
     flow_types = provider_config.flow_types
     base_coins = provider_config.base_assets
+    if "us-dollar" in base_coins:
+        base_coins.remove("us-dollar")
     narratives = provider_config.narratives
     range_lower_limits = provider_config.range_lower_limits
-    coin_groups = provider_config.asset_groups
+    coin_groups = {
+        key: set(values) for key, values in provider_config.asset_groups.items()
+    }
 
     coins = set()
     symbols = dict()
