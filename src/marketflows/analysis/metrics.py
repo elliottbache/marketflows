@@ -57,28 +57,20 @@ def calculate_group_metrics(
         # the data point in the first row that has all valid data
         # (columns with no valid data are not used)
         first_valid_time = find_first_valid_time(df)
+        if first_valid_time is None:
+            continue
 
         for group in df_groups.columns:
-            group_column = name_column(original_column=group, base_asset=base_asset)
-
-            # skip columns with no valid data
-            if group_column not in df.columns:
-                continue
-
-            # normalize group (for this base asset) with first_valid_time
-            first_valid_record = pd.to_numeric(
-                df.at[first_valid_time, group_column], errors="coerce"
+            ser = _normalize_with_first_time(
+                df_by_base=df,
+                col=group,
+                base_asset=base_asset,
+                first_valid_time=first_valid_time,
             )
-            if pd.isna(first_valid_record):
-                valid_time = find_first_valid_time(df_groups[[group]])
-                first_valid_record = df_groups.at[valid_time, group]
-
-            if first_valid_record == 0:
-                df[group_column] = np.nan
+            if not ser.isna().all():
+                df[name_column(original_column=group, base_asset=base_asset)] = ser
             else:
-                df[group_column] = df[group_column] / first_valid_record
-
-            df = _drop_non_number_columns(df)
+                continue
 
             # calculate derivatives of EMAs
             for diff_order in diff_orders:
@@ -106,7 +98,8 @@ def calculate_group_metrics(
     df_out = pd.concat(df_list, axis=1)
 
     # add columns normalized with values between 0 and 1 across groups at each timestep
-    df_out = pd.concat([df_out, _normalize_by_current_timestep(df_out)], axis=1)
+    if analysis_config.is_unit_normalize:
+        df_out = pd.concat([df_out, _normalize_by_current_timestep(df_out)], axis=1)
 
     return df_out
 
@@ -118,7 +111,7 @@ def calculate_range_metrics(
     df_ranges: pd.DataFrame,
     df_long: pd.DataFrame | None = None,
     range_lower_limits: list[float] | None = None,
-    analysis_config: AnalysisConfig | None = None,
+    analysis_config: AnalysisConfig,
 ) -> pd.DataFrame:
     """Calculate metrics for market cap ranges.
 
@@ -149,11 +142,8 @@ def calculate_range_metrics(
           causing a mostly missing record column), the first valid time for that
           column is used instead of the first valid time for all columns
     """
-    ema_periods = analysis_config.ema_periods if analysis_config is not None else None
-    diff_orders = analysis_config.diff_orders if analysis_config is not None else None
-
-    ema_periods = _initialize_ema_periods(ema_periods)
-    diff_orders = _initialize_diff_orders(diff_orders)
+    ema_periods = _initialize_ema_periods(analysis_config.ema_periods)
+    diff_orders = _initialize_diff_orders(analysis_config.diff_orders)
     if max(diff_orders) > 2:
         raise ValueError(
             "Differentiation orders larger than 2 for market cap ranges "
@@ -175,19 +165,6 @@ def calculate_range_metrics(
             "df_long must be defined for growth and inflection calculations"
         )
 
-    first_valid_times = dict()
-
-    # find first valid time for each base asset
-    for base_asset in base_assets:
-        # the data point in the first row that has all valid data
-        # (columns with no valid data are not used)
-        first_valid_times[base_asset] = find_first_valid_time(
-            _normalize_df_with_base_asset(
-                df_ranges, base_asset=base_asset, df_base=df_master
-            )
-        )
-
-    df_out = pd.DataFrame(index=df_ranges.index)
     df_list = list()
     # calculate derivatives
     for diff_order in diff_orders:
@@ -207,33 +184,46 @@ def calculate_range_metrics(
             df = _normalize_df_with_base_asset(
                 df_order, base_asset=base_asset, df_base=df_master
             )
+            df = _drop_non_number_columns(df)
 
-            first_valid_time = first_valid_times[base_asset]
-            for bucket in df_ranges.columns:
-                range_column = name_column(
-                    original_column=bucket, base_asset=base_asset, diff_order=diff_order
+            df_no_diff = _normalize_df_with_base_asset(
+                df_ranges, base_asset=base_asset, df_base=df_master
+            )
+
+            surviving_buckets = _find_surviving_buckets(
+                df_original=df_ranges,
+                df=df,
+                base_asset=base_asset,
+                diff_order=diff_order,
+            )
+            if not surviving_buckets:
+                continue
+
+            df_survivors = _normalize_df_with_base_asset(
+                df_ranges[surviving_buckets], base_asset=base_asset, df_base=df_master
+            )
+
+            first_valid_time = find_first_valid_time(df_survivors)
+            if first_valid_time is None:
+                continue
+
+            for bucket in surviving_buckets:
+                ser = _normalize_with_first_time(
+                    df_by_base=df,
+                    df_no_diff=df_no_diff,
+                    col=bucket,
+                    base_asset=base_asset,
+                    first_valid_time=first_valid_time,
+                    diff_order=diff_order,
                 )
-
-                # skip columns with no valid data
-                if range_column not in df.columns or first_valid_time is None:
-                    continue
-
-                # define normalizing quantity using first valid record
-                first_valid_record = pd.to_numeric(
-                    df_ranges.at[first_valid_time, bucket], errors="coerce"
-                )
-                if pd.isna(first_valid_record):
-                    valid_time = find_first_valid_time(df_ranges[[bucket]])
-                    first_valid_record = df_ranges.at[valid_time, bucket]
-
-                # normalize bucket (for this base asset) with first_valid_time of
-                # original data
-                if first_valid_record == 0:
-                    df[range_column] = np.nan
-                else:
-                    df[range_column] = df[range_column] / first_valid_record
-
-                df = _drop_non_number_columns(df)
+                if not ser.isna().all():
+                    df[
+                        name_column(
+                            original_column=bucket,
+                            base_asset=base_asset,
+                            diff_order=diff_order,
+                        )
+                    ] = ser
 
                 # calculate EMAs
                 for ema_period in ema_periods:
@@ -251,7 +241,8 @@ def calculate_range_metrics(
     df_out = pd.concat(df_list, axis=1)
 
     # add columns normalized with values between 0 and 1 across groups at each timestep
-    df_out = pd.concat([df_out, _normalize_by_current_timestep(df_out)], axis=1)
+    if analysis_config.is_unit_normalize:
+        df_out = pd.concat([df_out, _normalize_by_current_timestep(df_out)], axis=1)
 
     return df_out
 
@@ -338,6 +329,23 @@ def _initialize_bases(
     return df_base
 
 
+def _find_surviving_buckets(
+    *, df_original: pd.DataFrame, df: pd.DataFrame, base_asset: str, diff_order: int
+) -> list[str]:
+    """Make a list of the surviving buckets after differentiation."""
+    surviving_buckets = list()
+    for bucket in df_original.columns:
+        diff_col = name_column(
+            original_column=bucket,
+            base_asset=base_asset,
+            diff_order=diff_order,
+        )
+        if diff_col in df.columns and not df[diff_col].isna().all():
+            surviving_buckets.append(bucket)
+
+    return surviving_buckets
+
+
 def _normalize_df_with_base_asset(
     df_groups: pd.DataFrame,
     *,
@@ -380,6 +388,51 @@ def _drop_non_number_columns(df: pd.DataFrame) -> pd.DataFrame:
     logger.debug(f"Dropped non-numeric columns: {dropped_cols}")
 
     return df_out
+
+
+def _normalize_with_first_time(
+    *,
+    df_by_base: pd.DataFrame,
+    df_no_diff: pd.DataFrame | None = None,
+    col: str,
+    base_asset: str,
+    first_valid_time: pd.Timestamp,
+    diff_order: int = 0,
+) -> pd.Series:
+    """Normalize series with first valid record.
+
+    First valid record occurs when all non-nan columns have a valid row.
+    """
+    # get name for column with base asset and without differentiation
+    col_by_base_no_diff = name_column(
+        original_column=col, base_asset=base_asset, diff_order=0
+    )
+    col_by_base = name_column(
+        original_column=col, base_asset=base_asset, diff_order=diff_order
+    )
+
+    if df_no_diff is None:
+        df_no_diff = df_by_base.copy()
+
+    # skip columns with no valid data
+    if col_by_base not in df_by_base.columns or first_valid_time is None:
+        return pd.Series(data=np.nan, index=df_by_base.index)
+
+    # get first valid record from df with base asset at first valid time
+    first_valid_record = pd.to_numeric(
+        df_no_diff.at[first_valid_time, col_by_base_no_diff], errors="coerce"
+    )
+
+    if pd.isna(first_valid_record):
+        raise ValueError(f"{first_valid_record} not in {col_by_base} column.")
+
+    # normalize this column by its first valid record
+    if first_valid_record == 0:
+        ser = pd.Series(data=np.nan, index=df_by_base.index)
+    else:
+        ser = df_by_base[col_by_base] / first_valid_record
+
+    return ser
 
 
 def _calculate_ema(
