@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 from matplotlib.table import Table
 
+from marketflows.config import PlotConfig, ProviderConfig
 from marketflows.plots import tables as plots_tables
 from marketflows.types import FlowType
 
@@ -15,7 +16,13 @@ def hours_ago():
 
 def test_create_category_tables(monkeypatch, df_groups):
     df_groups = df_groups.copy()
-    base_assets = ["us-dollar", "japan-yen", "china-yuan"]
+    provider_config = ProviderConfig(
+        days=1,
+        flow_types=["individual_assets"],
+        base_assets=["us-dollar", "japan-yen", "china-yuan"],
+        asset_groups={"Portfolio1": ["nvidia", "tesla"]},
+    )
+    plot_config = PlotConfig(hours_ago=[4, 8])
 
     calls = []
 
@@ -38,13 +45,14 @@ def test_create_category_tables(monkeypatch, df_groups):
         category="Narratives",
         symbols={"pharma": "Rx", "ai": "AI"},
         groups=["pharma", "ai"],
-        base_assets=base_assets,
         df=df_groups,
+        provider_config=provider_config,
+        plot_config=plot_config,
     )
 
-    assert len(calls) == len(base_assets)
+    assert len(calls) == len(provider_config.base_assets)
     for idx in range(len(calls)):
-        assert calls[idx] == base_assets[idx]
+        assert calls[idx] == provider_config.base_assets[idx]
 
 
 class TestCreateTable:
