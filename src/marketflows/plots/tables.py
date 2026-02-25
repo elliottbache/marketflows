@@ -12,14 +12,13 @@ from matplotlib import colormaps
 from matplotlib.figure import Figure
 
 from marketflows._helpers import name_column
+from marketflows.config import PlotConfig, ProviderConfig
 from marketflows.plots._helpers import (
     create_label,
     create_nice_plot_text,
     find_last_valid_time,
 )
 from marketflows.types import FlowType
-
-_DEFAULT_HOURS_AGO = [4, 8, 12, 24, 48, 72, 168, 336, 672]
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +29,9 @@ def create_category_tables(
     category: str,
     symbols: dict[str, str],
     groups: list[str],
-    base_assets: list[str],
     df: pd.DataFrame,
-    hours_ago: list[int] = _DEFAULT_HOURS_AGO,
+    provider_config: ProviderConfig,
+    plot_config: PlotConfig,
 ) -> None:
     """Create tables for the specific category.
 
@@ -41,10 +40,9 @@ def create_category_tables(
         category: used as prefix for title and file name
         symbols: symbol for each asset/group
         groups: the labels of the rows in the table
-        base_assets: the base assets used to normalize the data
         df: dataframe containing all data (and possibly more)
-        hours_ago: the labels of the columns in the table representing time offsets from
-            the last valid time in the dataframe
+        provider_config: the configuration settings for providers
+        plot_config: the configuration settings for plotting
 
     Examples:
 
@@ -66,7 +64,7 @@ def create_category_tables(
         df = pickle.load(f)
         hours_ago = pickle.load(f)"""
 
-    for base_asset in base_assets:
+    for base_asset in provider_config.base_assets:
         _create_table(
             flow_type=flow_type,
             category=category,
@@ -74,7 +72,7 @@ def create_category_tables(
             symbols=symbols,
             groups=groups,
             df=df,
-            hours_ago=hours_ago,
+            hours_ago=plot_config.hours_ago,
         )
 
 

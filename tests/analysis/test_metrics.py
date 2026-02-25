@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from marketflows.analysis import metrics
-from marketflows.config import AnalysisConfig
+from marketflows.config import AnalysisConfig, ProviderConfig
 
 
 def test_calculate_group_metrics_success(df_master, df_groups):
@@ -20,7 +20,13 @@ def test_calculate_group_metrics_success(df_master, df_groups):
     df_base.loc[first_index, "japan-yen"] = np.nan
 
     analysis_config = AnalysisConfig(
-        diff_orders=None, ema_periods=[3], smooth_ema=10, is_unit_normalize=True
+        provider_config=ProviderConfig(
+            days=1, flow_types=["narratives"], narratives=["ai"]
+        ),
+        diff_orders=[0, 1, 2],
+        ema_periods=[3],
+        smoothing_ema=10,
+        is_unit_normalize=True,
     )
 
     df = metrics.calculate_group_metrics(
@@ -110,7 +116,6 @@ def test_calculate_group_metrics_success(df_master, df_groups):
 class TestCalculateRangeMetrics:
     def test_calculate_range_metrics_success(self, df_master, df_buckets, df_long):
         # make 2 other base assets
-        base_assets = ["us-dollar", "japan-yen", "china-yuan"]
         df_master = df_master.copy()
         df_master["japan-yen"] = df_master["amazon"] * 2
         df_master["china-yuan"] = df_master["nvidia"] * 2
@@ -119,18 +124,27 @@ class TestCalculateRangeMetrics:
         first_index = df_master.index[0]
         df_master.loc[first_index, "japan-yen"] = np.nan
 
+        provider_config = ProviderConfig(
+            days=1,
+            flow_types=["market_cap_ranges"],
+            base_assets=["us-dollar", "japan-yen", "china-yuan"],
+            asset_groups={"Mine": ["nvidia"]},
+            range_lower_limits=[899.0, 900.0, 901.0],
+        )
+
         analysis_config = AnalysisConfig(
+            provider_config=provider_config,
             diff_orders=[0, 1, 2],
             ema_periods=[3],
-            smooth_ema=10,
+            smoothing_ema=10,
             is_unit_normalize=False,
         )
 
         df = metrics.calculate_range_metrics(
-            base_assets=base_assets,
             df_ranges=df_buckets,
             df_long=df_long,
             df_master=df_master,
+            provider_config=provider_config,
             analysis_config=analysis_config,
         )
 
@@ -177,24 +191,30 @@ class TestCalculateRangeMetrics:
     def test_calculate_range_metrics_no_long_df_success(self, df_master, df_buckets):
         # make 2 other base assets
 
-        """base_assets = ["us-dollar", "amazon", "tesla"]
-        analysis_config = AnalysisConfig(
-            diff_orders=None, ema_periods=[3, 20], smooth_ema=None, is_unit_normalize=
-            False
-        )"""
-        base_assets = ["us-dollar"]
-        analysis_config = AnalysisConfig(
-            diff_orders=None, ema_periods=[1], smooth_ema=None, is_unit_normalize=False
-        )
-
-        df = metrics.calculate_range_metrics(
-            base_assets=base_assets,
-            df_ranges=df_buckets,
-            df_master=df_master,
-            analysis_config=analysis_config,
+        provider_config = ProviderConfig(
+            days=1,
+            flow_types=["market_cap_ranges"],
+            base_assets=["us-dollar"],
+            asset_groups={"Mine": ["nvidia"]},
             range_lower_limits=[899.0, 900.0, 901.0],
         )
 
+        analysis_config = AnalysisConfig(
+            provider_config=provider_config,
+            diff_orders=[0, 2],
+            ema_periods=[1],
+            smoothing_ema=1,
+            is_unit_normalize=False,
+        )
+
+        df = metrics.calculate_range_metrics(
+            df_ranges=df_buckets,
+            df_master=df_master,
+            analysis_config=analysis_config,
+            provider_config=provider_config,
+        )
+
+        print(f"\ndf: \n{df}")
         # check initial columns are normalized and have their names changed correctly
         first_index = df_master.index[1]
         pd.testing.assert_series_equal(
@@ -235,44 +255,6 @@ class TestCalculateRangeMetrics:
             rtol=1e-6,
             check_names=False,
         )
-
-
-@pytest.mark.parametrize(
-    "ema_periods, ema_periods_out, exc, exc_msg",
-    [
-        (None, [1], None, None),
-        ([1], [1], None, None),
-        ([10, 20], [1, 10, 20], None, None),
-        ([1.5, 2.5], None, TypeError, "EMA periods should be integers"),
-    ],
-    ids=["none_emas", "ema1", "multiple_emas", "none_emas"],
-)
-def test_initialize_ema_periods(ema_periods, ema_periods_out, exc, exc_msg):
-    if exc is None:
-        ema_periods = metrics._initialize_ema_periods(ema_periods)
-        assert ema_periods == ema_periods_out
-    else:
-        with pytest.raises(exc, match=exc_msg):
-            _ = metrics._initialize_ema_periods(ema_periods)
-
-
-@pytest.mark.parametrize(
-    "diff_orders, diff_orders_out, exc, exc_msg",
-    [
-        (None, [0, 1, 2], None, None),
-        ([], [0, 1, 2], None, None),
-        ([1, 3], [0, 1, 2, 3], None, None),
-        ([1.5, 2.5], None, TypeError, "Differentiation orders should be integers"),
-    ],
-    ids=["none_orders", "empty_orders", "extra_diff_orders", "none_diff_orders"],
-)
-def test_initialize_diff_orders(diff_orders, diff_orders_out, exc, exc_msg):
-    if exc is None:
-        diff_orders = metrics._initialize_diff_orders(diff_orders)
-        assert diff_orders == diff_orders_out
-    else:
-        with pytest.raises(exc, match=exc_msg):
-            _ = metrics._initialize_diff_orders(diff_orders)
 
 
 @pytest.mark.parametrize(

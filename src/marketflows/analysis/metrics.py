@@ -9,7 +9,7 @@ from marketflows.analysis.aggregates import (
     aggregate_cap_range_inflections,
     prepare_cap_ranges,
 )
-from marketflows.config import AnalysisConfig
+from marketflows.config import AnalysisConfig, ProviderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,6 @@ def calculate_group_metrics(
         ValueError: if base_assets are not in df_base
         TypeError: if diff_orders are not all integers
     """
-    ema_periods = _initialize_ema_periods(analysis_config.ema_periods)
-    diff_orders = _initialize_diff_orders(analysis_config.diff_orders)
     df_base = _initialize_bases(base_assets, df_base)
 
     df_list = list()
@@ -73,8 +71,8 @@ def calculate_group_metrics(
                 continue
 
             # calculate derivatives of EMAs
-            for diff_order in diff_orders:
-                for ema_period in ema_periods:
+            for diff_order in analysis_config.diff_orders:
+                for ema_period in analysis_config.ema_periods:
                     if ema_period > 1:
                         df = _calculate_ema(
                             df=df,
@@ -91,7 +89,7 @@ def calculate_group_metrics(
                             base_asset=base_asset,
                             ema_period=ema_period,
                             diff_order=diff_order,
-                            smooth_ema=analysis_config.smooth_ema,
+                            smoothing_ema=analysis_config.smoothing_ema,
                         )
         df_list.append(df)
 
@@ -106,11 +104,10 @@ def calculate_group_metrics(
 
 def calculate_range_metrics(
     *,
-    base_assets: list[str],
     df_master: pd.DataFrame | None = None,
     df_ranges: pd.DataFrame,
     df_long: pd.DataFrame | None = None,
-    range_lower_limits: list[float] | None = None,
+    provider_config: ProviderConfig,
     analysis_config: AnalysisConfig,
 ) -> pd.DataFrame:
     """Calculate metrics for market cap ranges.
@@ -122,14 +119,12 @@ def calculate_range_metrics(
     data for each base asset.
 
     Args:
-        base_assets: list of assets that will be used as base currency (us-dollar is default
-            since all data points are in terms of USD)
         df_master: dataframe with all individual asset data
         df_ranges: dataframe with the market cap ranges for which we are
             calculating metrics
         df_long: market caps for all the assets with one master datetime index
             organized into blocks of one asset after another
-        range_lower_limits: the lower limits of each of the market cap ranges
+        provider_config: configuration parameters for provider module
         analysis_config: configuration parameters for analysis module
 
 
@@ -142,24 +137,23 @@ def calculate_range_metrics(
           causing a mostly missing record column), the first valid time for that
           column is used instead of the first valid time for all columns
     """
-    ema_periods = _initialize_ema_periods(analysis_config.ema_periods)
-    diff_orders = _initialize_diff_orders(analysis_config.diff_orders)
-    if max(diff_orders) > 2:
+    if max(analysis_config.diff_orders) > 2:
         raise ValueError(
             "Differentiation orders larger than 2 for market cap ranges "
             + "are not implemented.  Do you really need these "
             + "differentiation orders?"
         )
-    if max(diff_orders) > 0 and (df_long is None or df_long.empty):
-        if range_lower_limits is None:
+    if max(analysis_config.diff_orders) > 0 and (df_long is None or df_long.empty):
+        if provider_config.range_lower_limits is None:
             raise ValueError("Range lower limits cannot be None for market cap ranges")
 
         if df_master is None:
             raise ValueError("df_master cannot be None for calculating df_long")
 
         df_long = prepare_cap_ranges(
-            range_lower_limits=range_lower_limits, df_master=df_master
+            range_lower_limits=provider_config.range_lower_limits, df_master=df_master
         )
+
     if df_long is None:
         raise ValueError(
             "df_long must be defined for growth and inflection calculations"
@@ -167,7 +161,7 @@ def calculate_range_metrics(
 
     df_list = list()
     # calculate derivatives
-    for diff_order in diff_orders:
+    for diff_order in analysis_config.diff_orders:
 
         match diff_order:
             case 1:
@@ -176,10 +170,16 @@ def calculate_range_metrics(
             case 2:
                 df_order = aggregate_cap_range_inflections(df_long=df_long)
                 df_order.columns = df_order.columns.astype(str) + "_inflection"
-            case _:
+            case 0:
                 df_order = df_ranges
+            case _:
+                logger.warning(
+                    f"Market cap ranges {diff_order}th derivative is "
+                    f"undefined.  Continuing to next differentiation order."
+                )
+                continue
 
-        for base_asset in base_assets:
+        for base_asset in provider_config.base_assets:
             # first normalize each range with base assets
             df = _normalize_df_with_base_asset(
                 df_order, base_asset=base_asset, df_base=df_master
@@ -226,7 +226,7 @@ def calculate_range_metrics(
                     ] = ser
 
                 # calculate EMAs
-                for ema_period in ema_periods:
+                for ema_period in analysis_config.ema_periods:
                     if ema_period > 1:
                         df = _calculate_ema(
                             df=df,
@@ -245,65 +245,6 @@ def calculate_range_metrics(
         df_out = pd.concat([df_out, _normalize_by_current_timestep(df_out)], axis=1)
 
     return df_out
-
-
-def _initialize_ema_periods(ema_periods: list[int] | None = None) -> list[int]:
-    """Create EMA period list with 1 (no EMA applied) as the first element.
-
-    Raises:
-        TypeError: if EMA periods are not all integers
-
-    Examples:
-        >>> _initialize_ema_periods(None)
-        [1]
-        >>> _initialize_ema_periods([])
-        [1]
-        >>> _initialize_ema_periods([10, 20])
-        [1, 10, 20]
-        >>> _initialize_ema_periods([1, 5])
-        [1, 5]
-    """
-    if ema_periods is None or not ema_periods:
-        ema_periods = [1]
-    else:
-        if not all(isinstance(x, int) for x in ema_periods):
-            raise TypeError("EMA periods should be integers.")
-
-        if ema_periods[0] != 1:
-            ema_periods.insert(0, 1)
-
-    return ema_periods
-
-
-def _initialize_diff_orders(diff_orders: list[int] | None = None) -> list[int]:
-    """Create differentiation orders list with all orders under the highest.
-
-    Raises:
-        TypeError: if differentiation orders are not all integers
-
-    Examples:
-        >>> _initialize_diff_orders(None)
-        [0, 1, 2]
-        >>> _initialize_diff_orders([])
-        [0, 1, 2]
-        >>> _initialize_diff_orders([0])
-        [0]
-        >>> _initialize_diff_orders([2])
-        [0, 1, 2]
-        >>> _initialize_diff_orders([1, 3])
-        [0, 1, 2, 3]
-    """
-    if diff_orders is None or not diff_orders:
-        return [0, 1, 2]
-    else:
-        if not all(isinstance(x, int) for x in diff_orders):
-            raise TypeError("Differentiation orders should be integers.")
-
-    # intermediate derivatives must be calculated to use _calculate_derivative on
-    # higher order derivatives
-    diff_orders = list(range(max(diff_orders) + 1))
-
-    return diff_orders
 
 
 def _initialize_bases(
@@ -473,7 +414,7 @@ def _calculate_derivative(
     base_asset: str = "us-dollar",
     ema_period: int = 1,
     diff_order: int = 1,
-    smooth_ema: int | None = 10,
+    smoothing_ema: int | None = 10,
 ) -> pd.DataFrame:
     """Calculate derivative for given dataframe, smoothing results."""
     column = name_column(
@@ -498,9 +439,9 @@ def _calculate_derivative(
     # df[column] = df[integral_column].diff() / (df.index.diff().total_seconds() / interval)
 
     # smooth out the 1st and 2nd order graphs with EMA10
-    if smooth_ema is None:
-        smooth_ema = 1
-    df_out[column] = _smooth_series(df_out[column], ema_period=smooth_ema)
+    if smoothing_ema is None:
+        smoothing_ema = 1
+    df_out[column] = _smooth_series(df_out[column], ema_period=smoothing_ema)
 
     df_out = _drop_non_number_columns(df_out)
 

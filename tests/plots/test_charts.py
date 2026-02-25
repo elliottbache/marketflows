@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pytest
 
-from marketflows.config import AnalysisConfig
+from marketflows.config import AnalysisConfig, ProviderConfig
 from marketflows.plots import charts
 
 
@@ -19,14 +19,28 @@ def test_plot_charts_success(df_groups, monkeypatch):
     df_groups = df_groups.rename(
         columns={"pharma": "pharma_by_us-dollar", "ai": "ai_by_us-dollar"}
     )
+    provider_config = ProviderConfig(
+        days=1,
+        flow_types=["narratives"],
+        base_assets=["us-dollar"],
+        narratives=["pharma", "ai"],
+    )
+    analysis_config = AnalysisConfig(
+        provider_config=provider_config,
+        diff_orders=[0, 1, 2],
+        ema_periods=[1, 5],
+        smoothing_ema=10,
+        is_unit_normalize=True,
+    )
+
     charts.plot_charts(
         flow_type="narratives",
         category="Narratives",
         df=df_groups,
-        groups=["pharma", "ai"],
+        groups=provider_config.narratives,
         symbols={"pharma": "Rx", "ai": "AI"},
         base_assets=["us-dollar"],
-        analysis_config=AnalysisConfig([0, 1, 2], [1, 5], 10, True),
+        analysis_config=analysis_config,
     )
 
     assert len(calls) == len(["us-dollar"]) * len([0, 1, 2]) * len([1, 5]) * 2
