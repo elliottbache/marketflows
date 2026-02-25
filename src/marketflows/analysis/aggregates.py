@@ -61,7 +61,7 @@ def create_master_df(
 
 def aggregate_groups(
     *,
-    group_assets: dict[str, set[str]],
+    group_assets: dict[str, set[str]] | None,
     df_master: pd.DataFrame,
 ) -> pd.DataFrame:
     """Sum market caps of assets from each group together.
@@ -82,6 +82,8 @@ def aggregate_groups(
         {'grp': [30.0, 30.0]}
     """
     df_groups = pd.DataFrame(index=df_master.index)
+    if not group_assets:
+        return df_groups
     for group, assets in group_assets.items():
         _validate_assets(assets, df_master=df_master, group=group)
         df_group = df_master[list(assets)]
