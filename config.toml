@@ -1,0 +1,21 @@
+provider = "coingecko"
+
+[providers.coingecko]
+days = 91
+flow_types = ["narratives", "individual_assets", "market_cap_ranges"]
+base_assets = ["bitcoin"]
+narratives = ["made-in-usa", "aave-tokens"]
+range_lower_limits = [1e9, 1e10]
+
+[providers.coingecko.asset_groups]
+Bullmind = ["zano", "superfarm"]
+cryptocapo = ["haha", "mstr2100"]
+
+[analysis]
+ema_periods = [20]
+diff_orders = [0, 1, 2]
+smoothing_ema = 10
+is_unit_normalize = true
+
+[plots]
+hours_ago = [4, 8, 12, 24, 48, 72, 168, 336, 672]
