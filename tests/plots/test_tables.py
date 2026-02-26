@@ -17,6 +17,7 @@ def hours_ago():
 def test_create_category_tables(monkeypatch, df_groups):
     df_groups = df_groups.copy()
     provider_config = ProviderConfig(
+        provider="td-ameritrade",
         days=1,
         flow_types=["individual_assets"],
         base_assets=["us-dollar", "japan-yen", "china-yuan"],

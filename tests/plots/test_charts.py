@@ -20,6 +20,7 @@ def test_plot_charts_success(df_groups, monkeypatch):
         columns={"pharma": "pharma_by_us-dollar", "ai": "ai_by_us-dollar"}
     )
     provider_config = ProviderConfig(
+        provider="td-ameritrade",
         days=1,
         flow_types=["narratives"],
         base_assets=["us-dollar"],

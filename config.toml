@@ -1,3 +1,4 @@
+# set as "" for reading the previous runs data
 provider = "coingecko"
 
 [providers.coingecko]

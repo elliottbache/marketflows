@@ -21,7 +21,10 @@ def test_calculate_group_metrics_success(df_master, df_groups):
 
     analysis_config = AnalysisConfig(
         provider_config=ProviderConfig(
-            days=1, flow_types=["narratives"], narratives=["ai"]
+            provider="td-ameritrade",
+            days=1,
+            flow_types=["narratives"],
+            narratives=["ai"],
         ),
         diff_orders=[0, 1, 2],
         ema_periods=[3],
@@ -125,6 +128,7 @@ class TestCalculateRangeMetrics:
         df_master.loc[first_index, "japan-yen"] = np.nan
 
         provider_config = ProviderConfig(
+            provider="td-ameritrade",
             days=1,
             flow_types=["market_cap_ranges"],
             base_assets=["us-dollar", "japan-yen", "china-yuan"],
@@ -192,6 +196,7 @@ class TestCalculateRangeMetrics:
         # make 2 other base assets
 
         provider_config = ProviderConfig(
+            provider="td-ameritrade",
             days=1,
             flow_types=["market_cap_ranges"],
             base_assets=["us-dollar"],

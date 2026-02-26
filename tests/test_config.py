@@ -10,6 +10,7 @@ class TestProviderConfig:
     def test_provider_config_days_validation(self):
         # test lower bound
         cfg = config.ProviderConfig(
+            provider="td-ameritrade",
             days=0,
             flow_types=["narratives"],
             base_assets=[],
@@ -21,6 +22,7 @@ class TestProviderConfig:
 
         # test upper bound
         cfg = config.ProviderConfig(
+            provider="td-ameritrade",
             days=500,
             flow_types=["narratives"],
             base_assets=[],
@@ -33,6 +35,7 @@ class TestProviderConfig:
     def test_provider_config_deduplication(self):
         # test that duplicate assets and narratives are removed
         cfg = config.ProviderConfig(
+            provider="td-ameritrade",
             days=10,
             flow_types=["narratives"],
             base_assets=["us-dollar", "us-dollar", "japan-yen"],
@@ -49,6 +52,7 @@ class TestProviderConfig:
         # test that using 'Portfolios' as a key raises an error
         with pytest.raises(ValueError, match="Portfolios is a taken name"):
             config.ProviderConfig(
+                provider="td-ameritrade",
                 days=10,
                 flow_types=["narratives"],
                 base_assets=[],
@@ -63,6 +67,7 @@ class TestProviderConfig:
             ValueError, match="Missing list of lower limits for market cap ranges"
         ):
             config.ProviderConfig(
+                provider="td-ameritrade",
                 days=10,
                 flow_types=["market_cap_ranges"],
                 base_assets=[],
@@ -71,13 +76,28 @@ class TestProviderConfig:
                 asset_groups={},
             )
 
+    def test_provider_config_empty_provider(self):
+        # test that provider can be an empty string (for reading saved data)
+        cfg = config.ProviderConfig(
+            provider="",
+            days=10,
+            flow_types=["narratives"],
+            base_assets=[],
+            narratives=["ai"],
+            range_lower_limits=[],
+            asset_groups={},
+        )
+        assert cfg.provider == ""
+
 
 class TestAnalysisConfig:
 
     def test_analysis_config_success(self):
         """Verify valid input is cleaned (sorted and deduplicated)."""
         cfg = config.AnalysisConfig(
-            provider_config=config.ProviderConfig(days=1, flow_types=[]),
+            provider_config=config.ProviderConfig(
+                provider="td-ameritrade", days=1, flow_types=[]
+            ),
             diff_orders=[2, 0, 1, 2],
             ema_periods=[20, 10, 20, 2],
             smoothing_ema=5,
@@ -94,7 +114,9 @@ class TestAnalysisConfig:
             ValueError, match="Smoothing EMA periods cannot be negative"
         ):
             config.AnalysisConfig(
-                provider_config=config.ProviderConfig(days=1, flow_types=[]),
+                provider_config=config.ProviderConfig(
+                    provider="td-ameritrade", days=1, flow_types=[]
+                ),
                 diff_orders=[1],
                 ema_periods=[10],
                 smoothing_ema=-5,
@@ -104,7 +126,9 @@ class TestAnalysisConfig:
     def test_analysis_config_zero_smoothing_ema(self):
         """Verify 0 smoothing EMA returns 1."""
         cfg = config.AnalysisConfig(
-            provider_config=config.ProviderConfig(days=1, flow_types=[]),
+            provider_config=config.ProviderConfig(
+                provider="td-ameritrade", days=1, flow_types=[]
+            ),
             diff_orders=[1],
             ema_periods=[10],
             smoothing_ema=0,
@@ -118,7 +142,9 @@ class TestAnalysisConfig:
             ValueError, match="Differentiation order cannot be negative"
         ):
             config.AnalysisConfig(
-                provider_config=config.ProviderConfig(days=1, flow_types=[]),
+                provider_config=config.ProviderConfig(
+                    provider="td-ameritrade", days=1, flow_types=[]
+                ),
                 diff_orders=[-3, -1],
                 ema_periods=[10],
                 smoothing_ema=5,
@@ -142,6 +168,7 @@ class TestAnalysisConfig:
     ):
         cfg = config.AnalysisConfig(
             provider_config=config.ProviderConfig(
+                provider="td-ameritrade",
                 days=1,
                 flow_types=flow_types,
                 asset_groups={"Mine": ["nvidia", "tesla"]},
@@ -158,7 +185,9 @@ class TestAnalysisConfig:
     def test_analysis_config_zero_values_allowed_for_diff(self):
         """Verify that 0 is acceptable since the check is for < 0."""
         cfg = config.AnalysisConfig(
-            provider_config=config.ProviderConfig(days=1, flow_types=[]),
+            provider_config=config.ProviderConfig(
+                provider="td-ameritrade", days=1, flow_types=[]
+            ),
             diff_orders=[0],
             ema_periods=[1],
             smoothing_ema=1,
@@ -169,7 +198,9 @@ class TestAnalysisConfig:
     def test_analysis_config_zero_emas_set_to_one(self):
         """Verify 0 EMAs are set to 1."""
         cfg = config.AnalysisConfig(
-            provider_config=config.ProviderConfig(days=1, flow_types=[]),
+            provider_config=config.ProviderConfig(
+                provider="td-ameritrade", days=1, flow_types=[]
+            ),
             diff_orders=[1],
             ema_periods=[0],
             smoothing_ema=0,
@@ -182,7 +213,9 @@ class TestAnalysisConfig:
         """Verify negative EMA periods trigger ValueError."""
         with pytest.raises(ValueError, match="EMA periods cannot be negative"):
             config.AnalysisConfig(
-                provider_config=config.ProviderConfig(days=1, flow_types=[]),
+                provider_config=config.ProviderConfig(
+                    provider="td-ameritrade", days=1, flow_types=[]
+                ),
                 diff_orders=[1],
                 ema_periods=[-10],
                 smoothing_ema=5,
@@ -193,7 +226,7 @@ class TestAnalysisConfig:
         with pytest.raises(ValueError, match="Missing dict of asset groups"):
             config.AnalysisConfig(
                 provider_config=config.ProviderConfig(
-                    days=1, flow_types=["individual_assets"]
+                    provider="td-ameritrade", days=1, flow_types=["individual_assets"]
                 ),
                 diff_orders=[3],
                 ema_periods=[10],
@@ -204,7 +237,9 @@ class TestAnalysisConfig:
     def test_analysis_config_defaults(self):
         """Verify that all None values is successful."""
         cfg = config.AnalysisConfig(
-            provider_config=config.ProviderConfig(days=1, flow_types=[]),
+            provider_config=config.ProviderConfig(
+                provider="td-ameritrade", days=1, flow_types=[]
+            ),
             smoothing_ema=1,
             is_unit_normalize=False,
         )
