@@ -220,3 +220,6 @@ secrets.toml
 
 # Plot outputs
 output_plots
+
+# Pickled provider data
+*.pkl
