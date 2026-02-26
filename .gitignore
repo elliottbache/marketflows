@@ -213,6 +213,7 @@ __marimo__/
 # Private files
 PRIVATE
 api_key.txt
+secrets.toml
 
 # Jupyter files
 *.ipynb
