@@ -35,6 +35,8 @@ class ProviderConfig:
     """Create a dataclass to hold the configuration values for the providers.
 
     Attributes:
+        provider (str): name of provider.  Leave as "" to read saved data from last
+            run
         days (int): the number of days we want to collect data for
         flow_types (list[FlowType]): the list of flow types we want to collect data for
         base_assets (list[str]): assets used as base currency (e.g. EUR, JPY, etc.).
@@ -45,10 +47,11 @@ class ProviderConfig:
             containing (often) different assets
 
     Examples:
-        >>> ProviderConfig(days=10, flow_types=["narratives"], narratives=["ai"])
-        ProviderConfig(days=10, flow_types=['narratives'], base_assets=['us-dollar'], narratives=['ai'], range_lower_limits=[], asset_groups={})
+        >>> ProviderConfig(provider="td-ameritrade", days=10, flow_types=["narratives"], narratives=["ai"])
+        ProviderConfig(provider='td-ameritrade', days=10, flow_types=['narratives'], base_assets=['us-dollar'], narratives=['ai'], range_lower_limits=[], asset_groups={})
     """
 
+    provider: str
     days: int
     flow_types: list[FlowType]
     base_assets: list[str] = field(default_factory=list)
@@ -210,7 +213,7 @@ def load_and_validate_config(
         prov = settings["providers"].get(provider)
         if not isinstance(prov, dict):
             raise ValueError("This provider has no settings.")
-        provider_config = ProviderConfig(**prov)
+        provider_config = ProviderConfig(provider=provider, **prov)
     else:
         raise ValueError("Provider settings must be defined.")
 
@@ -251,7 +254,7 @@ def _load_config(
 
 
 def _deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> None:
-    """Merges base with overrides with overrides replacing base values when both are
+    """Merges base with overrides replacing base values when both are
     available.
 
     Examples:

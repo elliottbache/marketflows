@@ -60,7 +60,7 @@ def test_load_coingecko_data(
     imposed by CoinGecko for days=3"""
     days = 3
     flow_types = ["narratives", "market_cap_ranges", "individual_assets"]
-    base_coins = ["bitcoin", "ethereum"]
+    base_assets = ["bitcoin", "ethereum"]
     narratives = ["made-in-usa"]
     range_lower_limits = [1.1e11, 1e12, 1e13]
 
@@ -158,7 +158,13 @@ def test_load_coingecko_data(
 
     # call tested function
     provider_config = ProviderConfig(
-        days, flow_types, base_coins, narratives, range_lower_limits, coin_groups_mod
+        provider="coingecko",
+        days=days,
+        flow_types=flow_types,
+        base_assets=base_assets,
+        narratives=narratives,
+        range_lower_limits=range_lower_limits,
+        asset_groups=coin_groups_mod,
     )
     coin_mcs, symbols, narrative_coins = coingecko.load_coingecko_data(
         api_key=coingecko_api_key, provider_config=provider_config
@@ -619,7 +625,15 @@ def test_remove_faulty_data_success():
 def test_define_frequency_min_and_max_timestamp_success(days, freq, days_ago, ms_tol):
     """Give an extra 60 seconds of leeway when checking min and max timestamps
     in case the testing takes longer than expected."""
-    provider_config = ProviderConfig(days, list(), list(), list(), list(), dict())
+    provider_config = ProviderConfig(
+        provider="coingecko",
+        days=days,
+        flow_types=list(),
+        base_assets=list(),
+        narratives=list(),
+        range_lower_limits=list(),
+        asset_groups=dict(),
+    )
     frequency, min_timestamp, max_timestamp = (
         coingecko.define_frequency_min_and_max_timestamp(provider_config)
     )
