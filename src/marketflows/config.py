@@ -232,6 +232,18 @@ def load_and_validate_config(
     return provider_config, analysis_config, plot_config
 
 
+def get_provider_credentials(provider_name: str) -> dict:
+    path = Path("secrets.toml")
+    if not path.exists():
+        return {}
+
+    with open(path, "rb") as f:
+        secrets = tomllib.load(f)
+
+    # Returns the specific dictionary for that provider, or empty dict if not found
+    return secrets.get(provider_name, {})
+
+
 def _load_config(
     config_file: Path,
 ) -> dict[str, Any]:

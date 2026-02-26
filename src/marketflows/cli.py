@@ -1,3 +1,8 @@
+import matplotlib
+
+matplotlib.use("Agg")  # create plots in backend always
+
+from marketflows.app import change_this_name_and_add_docstring
 from marketflows.logging_utils import configure_logging
 
 
@@ -13,6 +18,8 @@ def main() -> int:
     # parse args
 
     # call function to run pipeline
+    # uncomment for integration tests (just running python, not pytest)
+    change_this_name_and_add_docstring()
 
     return 0
 

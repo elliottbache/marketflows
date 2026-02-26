@@ -47,6 +47,15 @@ to market cap inflection).
    2. Calculate diff at $3^{rd}$ time step.
    3. Repeat for time step $n$.
 
+As of now, smoothing is only used on narratives and asset groups, and is not used on ranges.
+This is because for narratives and asset groups the EMAs are taken on the original data
+(before differentiation), then differentiation occurs.  Afterwards, the smoothing EMAs are
+applied.  For ranges however, differentiation occurs *before* taking the EMAs, causing a 
+second smoothing to be redundant.  
+
+The smoothing periods are shown in the file name, but not the plot title since this could 
+become confusing for the user consulting the plots.  On the other hand, the use of these periods
+must be recorded somewhere so that we do not have different charts for the same file name. 
 
 CHECK IF WE SHOULD BE DOING ONLY SMOOTHING EMA FOR RANGES OR IF DIFFERENT EMA VALUES LIKE FOR NARRATIVES AND GROUPS
 
