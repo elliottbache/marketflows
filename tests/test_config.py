@@ -1,5 +1,7 @@
 import copy
-from unittest.mock import patch
+import tomllib
+from pathlib import Path
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -252,6 +254,170 @@ def test_plot_config_success():
     is sorted."""
     cfg = config.PlotConfig(hours_ago=[-24, -12, 24, 4, 8, 24, 12, 48, 72, 168, 336])
     assert cfg.hours_ago == [4, 8, 12, 24, 48, 72, 168, 336]
+
+
+class TestLoadAndValidateConfig:
+
+    @patch("marketflows.config._load_config")
+    def test_load_and_validate_success(self, mock_load):
+        """Test the happy path where all settings are correctly present."""
+        # 1. Setup mock data
+        mock_load.return_value = {
+            "provider": "coingecko",
+            "providers": {"coingecko": {"days": 30, "flow_types": []}},
+            "analysis": {"smoothing_ema": 10, "is_unit_normalize": True},
+            "plots": {"hours_ago": [4, 8]},
+        }
+
+        # 2. Call the function
+        p_cfg, a_cfg, pl_cfg = config.load_and_validate_config(Path("fake.toml"))
+
+        # 3. Assertions
+        assert isinstance(p_cfg, config.ProviderConfig)
+        assert p_cfg.provider == "coingecko"
+        assert isinstance(a_cfg, config.AnalysisConfig)
+        assert isinstance(pl_cfg, config.PlotConfig)
+
+    @patch("marketflows.config._load_config")
+    def test_missing_providers_key(self, mock_load):
+        """Should raise ValueError if 'providers' table is missing."""
+        mock_load.return_value = {"provider": "coingecko"}  # missing 'providers'
+
+        with pytest.raises(ValueError, match=r"Provider settings must be defined."):
+            config.load_and_validate_config(Path("fake.toml"))
+
+    @patch("marketflows.config._load_config")
+    def test_provider_not_a_dict(self, mock_load):
+        """Should raise ValueError if the selected provider key points to non-dict data."""
+        mock_load.return_value = {
+            "provider": "coingecko",
+            "providers": {"coingecko": None},  # Not a dict
+        }
+
+        with pytest.raises(ValueError, match=r"This provider has no settings."):
+            config.load_and_validate_config(Path("fake.toml"))
+
+    @patch("marketflows.config._load_config")
+    def test_missing_analysis_or_plots(self, mock_load):
+        """Test that missing analysis or plots sections raise the correct errors."""
+        # Case 1: Missing Analysis
+        mock_load.return_value = {
+            "provider": "coingecko",
+            "providers": {
+                "coingecko": {
+                    "days": 365,
+                    "flow_types": ["narratives"],
+                    "narratives": ["ai"],
+                }
+            },
+            "plots": {},
+        }
+        with pytest.raises(ValueError, match=r"Analysis settings must be defined."):
+            config.load_and_validate_config(Path("fake.toml"))
+
+        # Case 2: Missing Plots
+        mock_load.return_value = {
+            "provider": "coingecko",
+            "providers": {
+                "coingecko": {
+                    "days": 365,
+                    "flow_types": ["narratives"],
+                    "narratives": ["ai"],
+                }
+            },
+            "analysis": {"is_unit_normalize": True, "smoothing_ema": 10},
+        }
+        with pytest.raises(ValueError, match=r"Plot settings must be defined."):
+            config.load_and_validate_config(Path("fake.toml"))
+
+
+class TestGetProviderCredentials:
+    @patch("pathlib.Path.exists")
+    def test_empty_provider_returns_empty_string(self, mock_exists):
+        """Should return "" without checking file if provider is an empty string."""
+        result = config.get_provider_credentials("")
+        assert result == ""
+        # Safety check: it shouldn't even look for the file if provider is empty
+        mock_exists.assert_not_called()
+
+    @patch("pathlib.Path.exists")
+    def test_file_not_found_raises_error(self, mock_exists):
+        """Should raise FileNotFoundError if a provider is requested but no secrets file exists."""
+        mock_exists.return_value = False
+
+        with pytest.raises(
+            FileNotFoundError,
+            match=r"secrets.toml does not exist.  API key cannot be read.",
+        ):
+            config.get_provider_credentials("coingecko")
+
+    @patch("pathlib.Path.exists")
+    def test_provider_found_returns_api_key(self, mock_exists):
+        """Happy path: returns the string value of the API key."""
+        mock_exists.return_value = True
+        fake_toml = b'[coingecko]\napi_key = "cg_123"\n[binance]\napi_key = "bn_456"'
+
+        with patch("builtins.open", mock_open(read_data=fake_toml)):
+            result = config.get_provider_credentials("coingecko")
+            assert result == "cg_123"
+
+    @patch("pathlib.Path.exists")
+    def test_missing_key_in_toml_raises_error(self, mock_exists):
+        """Should raise ValueError if the file exists but the provider key is missing."""
+        mock_exists.return_value = True
+        fake_toml = b'binance = "bn_456"'  # coingecko is missing
+
+        with (
+            patch("builtins.open", mock_open(read_data=fake_toml)),
+            pytest.raises(
+                ValueError,
+                match=r"This provider coingecko is not in secrets TOML file secrets.toml",
+            ),
+        ):
+            config.get_provider_credentials("coingecko")
+
+    @patch("pathlib.Path.exists")
+    def test_non_string_value_raises_error(self, mock_exists):
+        """Should raise ValueError if the key exists but is not a string (e.g. a table)."""
+        mock_exists.return_value = True
+        fake_toml = b"[coingecko]\napi_key = false"
+
+        with (
+            patch("builtins.open", mock_open(read_data=fake_toml)),
+            pytest.raises(
+                TypeError,
+                match=r"API key is invalid type: <class 'bool'>.  Should be str",
+            ),
+        ):
+            config.get_provider_credentials("coingecko")
+
+    @patch("pathlib.Path.exists")
+    def test_malformed_toml_logs_and_returns_empty(self, mock_exists):
+        """Verify that malformed TOML is caught, logged, and returns empty string."""
+        mock_exists.return_value = True
+        invalid_toml = b'this = "missing_quote'
+
+        with (
+            patch("builtins.open", mock_open(read_data=invalid_toml)),
+            pytest.raises(
+                tomllib.TOMLDecodeError, match=r"API keys TOML file secrets.toml"
+            ),
+        ):
+            config.get_provider_credentials("coingecko")
+
+    @patch("pathlib.Path.exists")
+    def test_custom_secrets_path(self, mock_exists):
+        """Verify custom path is used and correct key returned."""
+        mock_exists.return_value = True
+        custom_path = Path("custom/secrets.toml")
+        fake_toml = b'[coingecko]\napi_key = "custom_key"'
+
+        with patch("builtins.open", mock_open(read_data=fake_toml)) as mocked_file:
+            result = config.get_provider_credentials(
+                "coingecko", secrets_path=custom_path
+            )
+            assert result == "custom_key"
+            mocked_file.assert_called_once_with(custom_path, "rb")
 
 
 class TestLoadConfig:

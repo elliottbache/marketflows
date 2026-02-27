@@ -204,8 +204,8 @@ def load_and_validate_config(
 ) -> tuple[ProviderConfig, AnalysisConfig, PlotConfig]:
     """Load and validate the config file.
 
-    This does not deep merge (i.e. it will replace all nested items when replacing
-    an item."""
+    This does deep merge (i.e. it will descend into each nested item and only replace matching keys.
+    """
     settings = _load_config(config_file)
 
     if "providers" in settings:
@@ -232,16 +232,36 @@ def load_and_validate_config(
     return provider_config, analysis_config, plot_config
 
 
-def get_provider_credentials(provider_name: str) -> dict:
-    path = Path("secrets.toml")
+def get_provider_credentials(provider: str, secrets_path: Path = Path("secrets.toml")) -> str:
+    if not provider:
+        return ""
+
+    path = Path(secrets_path)
     if not path.exists():
-        return {}
+        raise FileNotFoundError(f"{path} does not exist.  API key cannot be read.")
 
-    with open(path, "rb") as f:
-        secrets = tomllib.load(f)
+    try:
+        with open(path, "rb") as f:
+            secrets = tomllib.load(f)
+    except tomllib.TOMLDecodeError as e:
+        raise tomllib.TOMLDecodeError(
+            f"API keys TOML file {path} contains an error."
+        ) from e
 
-    # Returns the specific dictionary for that provider, or empty dict if not found
-    return secrets.get(provider_name, {})
+    # returns the specific API key for that provider, or raise if not found
+    provider_dict = secrets.get(provider)
+    if provider_dict is None:
+        raise ValueError(f"This provider {provider} is not in secrets TOML file {path}")
+    if "api_key" not in provider_dict:
+        raise ValueError(
+            f"No API keys found for {provider} in secrets TOML file {path}"
+        )
+
+    api_key = provider_dict.get("api_key")
+    if not isinstance(api_key, str):
+        raise TypeError(f"API key is invalid type: {type(api_key)}.  Should be str")
+
+    return api_key
 
 
 def _load_config(
