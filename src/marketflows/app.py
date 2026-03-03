@@ -2,7 +2,6 @@
 Run pipeline to query providers, analyze data, and create graphs.
 """
 
-import pickle
 from pathlib import Path
 
 import pandas as pd
@@ -21,79 +20,59 @@ from marketflows.config import (
     AnalysisConfig,
     PlotConfig,
     ProviderConfig,
+    get_provider_credentials,
     load_and_validate_config,
 )
 from marketflows.plots.charts import plot_charts
 from marketflows.plots.tables import create_category_tables
-from marketflows.providers._credentials import read_api_key
 from marketflows.providers.coingecko import (
     define_frequency_min_and_max_timestamp,
     load_coingecko_data,
 )
 from marketflows.types import FlowType
 
-# render_outputs
 
+def run_pipeline(
+    *, secrets_path: Path | None = None, config_path: Path | None = None
+) -> None:
+    """Run complete pipeline for querying provider, analyzing data, and plotting."""
 
-# run_pipeline
-def change_this_name_and_add_docstring() -> None:
+    if secrets_path is None:
+        secrets_path = Path.cwd() / Path("secrets.toml")
+    if config_path is None:
+        config_path = Path.cwd() / Path("config.toml")
 
     provider_config, analysis_config, plot_config = load_and_validate_config(
-        Path("config.toml")
+        config_path
     )
 
-    # REPLACE WITH SECRETS TOML
-    api_key_path = Path.cwd() / "PRIVATE" / "api_key.txt"  # ERASE THIS LINE!!!
+    api_key = get_provider_credentials(
+        provider_config.provider, secrets_path=secrets_path
+    )
+    if not api_key:
+        raise FileNotFoundError(f"API key was not correctly read from: {secrets_path}.")
 
-    api_key = read_api_key(api_key_path)
-
-    # set current time
-
-    # set last time: find_last_time_all
-
-    # list comprehension: for each flow type plot all graphs and tables: render_outputs
-
-    # set now
-
-    # cycle if interval has not passed yet
-
-    # reread config
-    if provider_config.provider:
-        coin_mcs, symbols, narrative_coins = load_coingecko_data(
-            api_key=api_key, provider_config=provider_config
-        )
-        import pickle
-
-        with open("market_data.pkl", "wb") as f:
-            pickle.dump(coin_mcs, f)
-            pickle.dump(symbols, f)
-            pickle.dump(narrative_coins, f)
-    else:
-        with open("market_data.pkl", "rb") as f:
-            coin_mcs = pickle.load(f)
-            symbols = pickle.load(f)
-            narrative_coins = pickle.load(f)
+    asset_mcs, symbols, narrative_assets = load_coingecko_data(
+        api_key=api_key, provider_config=provider_config
+    )
 
     freq, min_timestamp, max_timestamp = define_frequency_min_and_max_timestamp(
         provider_config
     )
 
     df_master = create_master_df(
-        coin_mcs, freq=freq, min_timestamp=min_timestamp, max_timestamp=max_timestamp
+        asset_mcs, freq=freq, min_timestamp=min_timestamp, max_timestamp=max_timestamp
     )
 
     # set df_base with data for base assets except USD
-    if provider_config.base_assets:
-        base_assets_minus_dollar = provider_config.base_assets.copy()
-        if "us-dollar" in base_assets_minus_dollar:
-            base_assets_minus_dollar.remove("us-dollar")
-        df_base = df_master[base_assets_minus_dollar]
-    else:
-        df_base = None
+    base_assets_minus_dollar = [
+        a for a in provider_config.base_assets if a != "us-dollar"
+    ]
+    df_base = df_master[base_assets_minus_dollar] if base_assets_minus_dollar else None
 
     if "narratives" in provider_config.flow_types and provider_config.narratives:
         df_narratives = _analyze_group_data(
-            group_assets=narrative_coins,
+            group_assets=narrative_assets,
             df_master=df_master,
             base_assets=provider_config.base_assets,
             df_base=df_base,
@@ -118,12 +97,10 @@ def change_this_name_and_add_docstring() -> None:
     ):
         # create a chart and table for each group of assets
         # (e.g. one person's portfolio)
-        assets_dfs = dict()  # create dict of dfs for each asset group
         for group, asset_list in provider_config.asset_groups.items():
-            assets_dfs[group] = df_master[asset_list]
 
             df_assets = _analyze_group_data(
-                df_groups=assets_dfs[group],
+                df_groups=df_master[asset_list],
                 group_assets=None,
                 df_master=df_master,
                 base_assets=provider_config.base_assets,
@@ -211,6 +188,8 @@ def _analyze_group_data(
 ) -> pd.DataFrame:
     """Analyze group data."""
     if df_groups is None:
+        if not group_assets:
+            raise ValueError("Provide df_groups or group_assets.")
         df_groups = aggregate_groups(group_assets=group_assets, df_master=df_master)
     else:
         df_groups = df_groups.copy()
