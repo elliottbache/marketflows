@@ -36,6 +36,7 @@ def plot_charts(
     symbols: dict[str, str],
     base_assets: list[str],
     analysis_config: AnalysisConfig,
+    out_dir: Path,
 ) -> None:
     """Plot all charts for flow type.
 
@@ -56,7 +57,7 @@ def plot_charts(
         for base_asset in base_assets:
             for diff_order in analysis_config.diff_orders:
                 for ema_period in analysis_config.ema_periods:
-                    out_dir = _plot_single_chart(
+                    out_path = _plot_single_chart(
                         flow_type=flow_type,
                         category=category,
                         groups=groups,
@@ -66,8 +67,10 @@ def plot_charts(
                         ema_period=ema_period,
                         diff_order=diff_order,
                         is_unit=is_unit,
+                        out_dir=out_dir,
                     )
-                    logger.debug(f"{out_dir} created.")
+                    if out_path is not None:
+                        logger.debug(f"{out_path} created.")
 
 
 def _plot_single_chart(
@@ -82,7 +85,7 @@ def _plot_single_chart(
     diff_order: int = 0,
     is_unit: bool = False,
     ax: matplotlib.axes.Axes | None = None,
-    out_path: Path | None = None,
+    out_dir: Path | None = None,
 ) -> Path | None:
     """Plot single chart."""
     graph_origin = define_graph_origin(
@@ -181,18 +184,19 @@ def _plot_single_chart(
     )
 
     # create file
-    if out_path is None:
-        plot_folder = Path("output_plots")
-        plot_folder.mkdir(parents=True, exist_ok=True)
-        plot_filename = create_nice_plot_text(
-            text_type="file_name",
-            group=category,
-            base_asset=base_asset,
-            diff_order=diff_order,
-            ema_period=ema_period,
-            is_unit=is_unit,
-        )
-        out_path = plot_folder / Path(plot_filename + ".png")
+    if out_dir is None:
+        out_dir = Path("output_plots")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    plot_filename = create_nice_plot_text(
+        text_type="file_name",
+        group=category,
+        base_asset=base_asset,
+        diff_order=diff_order,
+        ema_period=ema_period,
+        is_unit=is_unit,
+    )
+    out_path = out_dir / Path(plot_filename + ".png")
 
     fig.savefig(out_path)
     # plt.show()
