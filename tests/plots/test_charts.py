@@ -5,9 +5,12 @@ from marketflows.config import AnalysisConfig, ProviderConfig
 from marketflows.plots import charts
 
 
-def test_plot_charts_success(df_groups, monkeypatch):
+def test_plot_charts_success(df_groups, monkeypatch, tmp_path):
 
     calls = list()
+
+    out_dir = tmp_path / "output_plots"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     def fake_plot_single_chart(**kwargs):
         calls.append(kwargs)
@@ -42,6 +45,7 @@ def test_plot_charts_success(df_groups, monkeypatch):
         symbols={"pharma": "Rx", "ai": "AI"},
         base_assets=["us-dollar"],
         analysis_config=analysis_config,
+        out_dir=out_dir,
     )
 
     assert len(calls) == len(["us-dollar"]) * len([0, 1, 2]) * len([1, 5]) * 2
@@ -76,7 +80,7 @@ class TestPlotSingleChart:
             ema_period=5,
             diff_order=1,
             ax=ax,
-            out_path=tmp_file,
+            out_dir=tmp_file,
         )
         assert len(ax.get_lines()) == len(df_groups.columns)
         assert ax.get_title() is not None
@@ -95,7 +99,7 @@ class TestPlotSingleChart:
             groups=["pharma", "ai"],
             symbols={"pharma": "Rx", "ai": "AI"},
             df=df_groups,
-            out_path=out_file,
+            out_dir=out_file,
         )
         assert out_file.exists()
         assert out_file.stat().st_size > 0

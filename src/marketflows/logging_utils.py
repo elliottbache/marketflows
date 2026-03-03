@@ -41,8 +41,7 @@ def configure_logging(
 
     Args:
         level (str): Logging level name (e.g., ``"DEBUG"``, ``"INFO"``).
-        node (str): Logical node name used for the log filename (e.g., ``"CoinGecko"`` or
-            ``"TD Ameritrade"``).
+        node (str): Logical node name used for the log filename.
         is_tutorial (bool): If True, use deterministic timestamps and overwrite the log
             file each run.
 

@@ -11,6 +11,7 @@ class TestRunPipeline:
     def test_passes_paths_and_raises_if_api_key_missing(self, tmp_path, monkeypatch):
         config_path = tmp_path / "config.toml"
         secrets_path = tmp_path / "secrets.toml"
+        out_dir = tmp_path / "output_plots"
 
         provider_config = SimpleNamespace(
             provider="coingecko",
@@ -42,7 +43,9 @@ class TestRunPipeline:
         )
 
         with pytest.raises(FileNotFoundError, match="API key was not correctly read"):
-            app.run_pipeline(config_path=config_path, secrets_path=secrets_path)
+            app.run_pipeline(
+                config_path=config_path, secrets_path=secrets_path, out_dir=out_dir
+            )
 
         assert seen["config_path"] == config_path
         assert seen["provider"] == "coingecko"
@@ -113,7 +116,9 @@ class TestRunPipeline:
         )
 
         app.run_pipeline(
-            config_path=tmp_path / "config.toml", secrets_path=tmp_path / "secrets.toml"
+            config_path=tmp_path / "config.toml",
+            secrets_path=tmp_path / "secrets.toml",
+            out_dir=tmp_path / "output_plots",
         )
 
         assert calls["load_data"] == 1
@@ -157,7 +162,9 @@ class TestRunPipeline:
         )
 
         app.run_pipeline(
-            config_path=tmp_path / "config.toml", secrets_path=tmp_path / "secrets.toml"
+            config_path=tmp_path / "config.toml",
+            secrets_path=tmp_path / "secrets.toml",
+            out_dir=tmp_path / "output_plots",
         )
 
         assert len(seen) == 1
@@ -206,7 +213,9 @@ class TestRunPipeline:
         )
 
         app.run_pipeline(
-            config_path=tmp_path / "config.toml", secrets_path=tmp_path / "secrets.toml"
+            config_path=tmp_path / "config.toml",
+            secrets_path=tmp_path / "secrets.toml",
+            out_dir=tmp_path / "output_plots",
         )
 
         # Per group (2) + portfolios (1) = 3 output calls
@@ -257,7 +266,9 @@ class TestRunPipeline:
         )
 
         app.run_pipeline(
-            config_path=tmp_path / "config.toml", secrets_path=tmp_path / "secrets.toml"
+            config_path=tmp_path / "config.toml",
+            secrets_path=tmp_path / "secrets.toml",
+            out_dir=tmp_path / "output_plots",
         )
 
         assert len(seen) == 1
@@ -267,12 +278,15 @@ class TestRunPipeline:
 
 
 def test_analyze_group_data_uses_aggregate_groups_when_df_groups_none(
-    monkeypatch, df_master
+    monkeypatch, df_master, tmp_path
 ):
     df_agg = pd.DataFrame({"Mine": [3.0, 4.0, 5.0]}, index=df_master.index)
     df_out = pd.DataFrame({"Mine": [1.0, 1.1, 1.2]}, index=df_master.index)
 
     seen: dict[str, object] = {}
+
+    out_dir = tmp_path / "output_plots"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     def fake_aggregate_groups(*, group_assets, df_master):
         seen["group_assets"] = group_assets
@@ -302,8 +316,11 @@ def test_analyze_group_data_uses_aggregate_groups_when_df_groups_none(
     pd.testing.assert_frame_equal(seen["df_groups_passed"], df_agg)
 
 
-def test_create_plots_and_charts_calls_plotters(monkeypatch, df_groups):
+def test_create_plots_and_charts_calls_plotters(monkeypatch, df_groups, tmp_path):
     calls: dict[str, dict[str, object]] = {}
+
+    out_dir = tmp_path / "output_plots"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(
         app, "plot_charts", lambda **kwargs: calls.setdefault("plot_charts", kwargs)
@@ -324,6 +341,7 @@ def test_create_plots_and_charts_calls_plotters(monkeypatch, df_groups):
         analysis_config=SimpleNamespace(),
         plot_config=SimpleNamespace(),
         df=df_groups,
+        out_dir=out_dir,
     )
 
     assert "plot_charts" in calls

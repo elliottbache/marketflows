@@ -32,6 +32,7 @@ def create_category_tables(
     df: pd.DataFrame,
     provider_config: ProviderConfig,
     plot_config: PlotConfig,
+    out_dir: Path,
 ) -> None:
     """Create tables for the specific category.
 
@@ -43,27 +44,11 @@ def create_category_tables(
         df: dataframe containing all data (and possibly more)
         provider_config: the configuration settings for providers
         plot_config: the configuration settings for plotting
+        out_dir: directory where tables are saved
 
     Examples:
 
     """
-
-    """import pickle
-    with open("plot_tables.pkl", "wb") as f:
-        pickle.dump(category, f)
-        pickle.dump(groups, f)
-        pickle.dump(base_assets, f)
-        pickle.dump(df, f)
-        pickle.dump(hours_ago, f)"""
-
-    """import pickle
-    with open("plot_tables.pkl", "rb") as f:
-        category = pickle.load(f)
-        groups = pickle.load(f)
-        base_assets = pickle.load(f)
-        df = pickle.load(f)
-        hours_ago = pickle.load(f)"""
-
     for base_asset in provider_config.base_assets:
         _create_table(
             flow_type=flow_type,
@@ -73,6 +58,7 @@ def create_category_tables(
             groups=groups,
             df=df,
             hours_ago=plot_config.hours_ago,
+            out_dir=out_dir,
         )
 
 
@@ -85,7 +71,7 @@ def _create_table(
     groups: list[str],
     df: pd.DataFrame,
     hours_ago: list[int],
-    out_path: Path | None = None,
+    out_dir: Path | None = None,
     ax: matplotlib.axes.Axes | None = None,
 ) -> Path:
     """Create table for the specific category and base_asset."""
@@ -96,7 +82,7 @@ def _create_table(
         logger.warning(
             f"No gains to plot for {category} category and {base_asset} base asset"
         )
-        return Path() if out_path is None else out_path
+        return Path() if out_dir is None else out_dir
 
     # define column names
     column_names = [
@@ -157,19 +143,20 @@ def _create_table(
     )
 
     # save figure
-    if out_path is None:
-        plot_folder = Path("output_plots")
-        plot_folder.mkdir(parents=True, exist_ok=True)
-        suffix = "_percent_gains_table.png"
-        plot_filename = (
-            create_nice_plot_text(
-                text_type="file_name",
-                group=category,
-                base_asset=base_asset,
-            )
-            + suffix
+    if out_dir is None:
+        out_dir = Path("output_plots")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    suffix = "_percent_gains_table.png"
+    plot_filename = (
+        create_nice_plot_text(
+            text_type="file_name",
+            group=category,
+            base_asset=base_asset,
         )
-        out_path = plot_folder / Path(plot_filename)
+        + suffix
+    )
+    out_path = out_dir / Path(plot_filename)
 
     fig.savefig(out_path, bbox_inches="tight", pad_inches=0.05)
 

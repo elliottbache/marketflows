@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -14,7 +16,7 @@ def hours_ago():
     return [4, 8, 12, 24, 48, 72, 168, 336, 672]
 
 
-def test_create_category_tables(monkeypatch, df_groups):
+def test_create_category_tables(monkeypatch, df_groups, tmp_path):
     df_groups = df_groups.copy()
     provider_config = ProviderConfig(
         provider="td-ameritrade",
@@ -27,6 +29,9 @@ def test_create_category_tables(monkeypatch, df_groups):
 
     calls = []
 
+    out_dir = tmp_path / "output_plots"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     def mock_create_table(
         *,
         flow_type: FlowType,
@@ -36,6 +41,7 @@ def test_create_category_tables(monkeypatch, df_groups):
         groups: list[str],
         df: pd.DataFrame,
         hours_ago: list[int],
+        out_dir: Path,
     ) -> None:
         calls.append(base_asset)
 
@@ -49,6 +55,7 @@ def test_create_category_tables(monkeypatch, df_groups):
         df=df_groups,
         provider_config=provider_config,
         plot_config=plot_config,
+        out_dir=out_dir,
     )
 
     assert len(calls) == len(provider_config.base_assets)
@@ -82,7 +89,7 @@ class TestCreateTable:
             df=df_groups,
             hours_ago=hours_ago,
             ax=ax,
-            out_path=out_file,
+            out_dir=out_file,
         )
 
         # assert that a title was added
@@ -124,7 +131,7 @@ class TestCreateTable:
             groups=["pharma", "ai"],
             df=df_groups,
             hours_ago=hours_ago,
-            out_path=out_file,
+            out_dir=out_file,
         )
         assert out_file.exists()
         assert out_file.stat().st_size > 0

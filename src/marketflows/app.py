@@ -32,16 +32,8 @@ from marketflows.providers.coingecko import (
 from marketflows.types import FlowType
 
 
-def run_pipeline(
-    *, secrets_path: Path | None = None, config_path: Path | None = None
-) -> None:
+def run_pipeline(*, secrets_path: Path, config_path: Path, out_dir: Path) -> None:
     """Run complete pipeline for querying provider, analyzing data, and plotting."""
-
-    if secrets_path is None:
-        secrets_path = Path.cwd() / Path("secrets.toml")
-    if config_path is None:
-        config_path = Path.cwd() / Path("config.toml")
-
     provider_config, analysis_config, plot_config = load_and_validate_config(
         config_path
     )
@@ -89,6 +81,7 @@ def run_pipeline(
             analysis_config=analysis_config,
             plot_config=plot_config,
             df=df_narratives,
+            out_dir=out_dir,
         )
 
     if (
@@ -118,6 +111,7 @@ def run_pipeline(
                 analysis_config=analysis_config,
                 plot_config=plot_config,
                 df=df_assets,
+                out_dir=out_dir,
             )
 
         # create a chart and table for all groups of assets (e.g. stocks vs. metals)
@@ -143,6 +137,7 @@ def run_pipeline(
             analysis_config=analysis_config,
             plot_config=plot_config,
             df=df_groups,
+            out_dir=out_dir,
         )
 
     if (
@@ -174,6 +169,7 @@ def run_pipeline(
             analysis_config=analysis_config,
             plot_config=plot_config,
             df=df_ranges,
+            out_dir=out_dir,
         )
 
 
@@ -215,6 +211,7 @@ def _create_plots_and_charts(
     analysis_config: AnalysisConfig,
     plot_config: PlotConfig,
     df: pd.DataFrame,
+    out_dir: Path,
 ) -> None:
     """Create plot and charts for given data."""
     plot_charts(
@@ -225,6 +222,7 @@ def _create_plots_and_charts(
         base_assets=base_assets,
         analysis_config=analysis_config,
         df=df,
+        out_dir=out_dir,
     )
 
     create_category_tables(
@@ -235,4 +233,5 @@ def _create_plots_and_charts(
         provider_config=provider_config,
         plot_config=plot_config,
         df=df,
+        out_dir=out_dir,
     )
