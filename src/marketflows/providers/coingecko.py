@@ -131,9 +131,6 @@ def load_coingecko_data(
             time_and_mcs = _create_df_from_chart_data(coin_data_dict)
             coin_mcs[coin] = _remove_faulty_data(time_and_mcs)
 
-            # UNCOMMENT THESE LINES TO CREATE RAW DATA FILES FOR DEBUGGING
-            # time_and_mcs.to_csv(f"PRIVATE/raw_data/raw_data_{coin}.csv", index=False)
-
     return coin_mcs, symbols, all_narrative_coins
 
 

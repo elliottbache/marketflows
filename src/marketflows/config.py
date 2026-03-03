@@ -232,7 +232,9 @@ def load_and_validate_config(
     return provider_config, analysis_config, plot_config
 
 
-def get_provider_credentials(provider: str, secrets_path: Path = Path("secrets.toml")) -> str:
+def get_provider_credentials(
+    provider: str, secrets_path: Path = Path("secrets.toml")
+) -> str:
     if not provider:
         return ""
 
