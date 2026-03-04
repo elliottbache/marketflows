@@ -62,9 +62,7 @@ def load_coingecko_data(
     """
     days = provider_config.days
     flow_types = provider_config.flow_types
-    base_coins = provider_config.base_assets
-    if "us-dollar" in base_coins:
-        base_coins.remove("us-dollar")
+    base_coins = [c for c in provider_config.base_assets if c != "us-dollar"]
     narratives = provider_config.narratives
     range_lower_limits = provider_config.range_lower_limits
     coin_groups = {
@@ -73,6 +71,7 @@ def load_coingecko_data(
 
     coins = set()
     symbols = dict()
+    all_narrative_coins: dict[str, set[str]] = {}
 
     # open a session for CoinGecko
     with requests.Session() as session:
@@ -209,6 +208,8 @@ def _query_coins(
 
     start_time = time.time()
     while True:
+        if time.time() > start_time + 2 * request_reset:
+            raise TimeoutError("CoinGecko query timed out.")
         try:
             logger.info(
                 f"Querying CoinGecko URL={url_data.url}, with params={url_data.params}"
@@ -241,14 +242,6 @@ def _query_coins(
             )
             time.sleep(fail_wait)
             continue
-
-        finally:
-            end_time = time.time()
-            if response is None or (
-                response.status_code != requests.codes.ok
-                and end_time > start_time + 2 * request_reset
-            ):  # extra margin before raising
-                raise TimeoutError("CoinGecko query timed out.")
 
     return data
 
