@@ -1,5 +1,4 @@
 import copy
-import tomllib
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
@@ -399,9 +398,7 @@ class TestGetProviderCredentials:
 
         with (
             patch("builtins.open", mock_open(read_data=invalid_toml)),
-            pytest.raises(
-                tomllib.TOMLDecodeError, match=r"API keys TOML file secrets.toml"
-            ),
+            pytest.raises(ValueError, match=r"API keys TOML file secrets.toml"),
         ):
             config.get_provider_credentials("coingecko")
 

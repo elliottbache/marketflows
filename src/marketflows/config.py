@@ -16,6 +16,7 @@ _DEFAULTS = {
             "narratives": ["made-in-usa", "ai"],
             "range_lower_limits": [1e9, 1e10],
             "flow_types": ["narratives", "individual_assets", "market_cap_ranges"],
+            "asset_groups": {"Top": ["nvidia"], "Risk": ["tesla", "amazon"]},
         },
     },
     "analysis": {
@@ -246,9 +247,7 @@ def get_provider_credentials(
         with open(path, "rb") as f:
             secrets = tomllib.load(f)
     except tomllib.TOMLDecodeError as e:
-        raise tomllib.TOMLDecodeError(
-            f"API keys TOML file {path} contains an error."
-        ) from e
+        raise ValueError(f"API keys TOML file {path} contains an error.") from e
 
     # returns the specific API key for that provider, or raise if not found
     provider_dict = secrets.get(provider)
