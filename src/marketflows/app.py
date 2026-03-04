@@ -65,12 +65,15 @@ def run_pipeline(
         )
 
         freq, _, _ = define_frequency_min_and_max_timestamp(provider_config)
-        min_timestamp, max_timestamp = np.inf, -np.inf
+        min_float, max_float = np.inf, -np.inf
         for asset in asset_mcs:
-            if asset_mcs[asset]["timestamps"].iloc[0] < min_timestamp:
-                min_timestamp = asset_mcs[asset]["timestamps"].iloc[0]
-            if asset_mcs[asset]["timestamps"].iloc[-1] > max_timestamp:
-                max_timestamp = asset_mcs[asset]["timestamps"].iloc[-1]
+            if asset_mcs[asset]["timestamps"].iloc[0] < min_float:
+                min_float = asset_mcs[asset]["timestamps"].iloc[0]
+            if asset_mcs[asset]["timestamps"].iloc[-1] > max_float:
+                max_float = asset_mcs[asset]["timestamps"].iloc[-1]
+
+        min_timestamp = pd.Timestamp(min_float, unit="ms", tz="UTC")
+        max_timestamp = pd.Timestamp(max_float, unit="ms", tz="UTC")
 
     else:
         provider_config, analysis_config, plot_config = load_and_validate_config(
