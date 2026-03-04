@@ -79,8 +79,8 @@ def calculate_group_metrics(
                             group=group,
                             base_asset=base_asset,
                             ema_period=ema_period,
-                            diff_order=diff_order,
-                        )
+                        )  # diff_order defaults to 0 and _calculate_ema skips if
+                        # already calculated
 
                     if diff_order > 0:
                         df = _calculate_derivative(
@@ -92,6 +92,9 @@ def calculate_group_metrics(
                             smoothing_ema=analysis_config.smoothing_ema,
                         )
         df_list.append(df)
+
+    if not df_list:
+        return pd.DataFrame(index=df_groups.index)
 
     df_out = pd.concat(df_list, axis=1)
 
@@ -237,6 +240,9 @@ def calculate_range_metrics(
                         )
 
             df_list.append(df)
+
+    if not df_list:
+        return pd.DataFrame(index=df_ranges.index)
 
     df_out = pd.concat(df_list, axis=1)
 
