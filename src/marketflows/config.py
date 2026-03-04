@@ -280,8 +280,8 @@ def _load_config(
             user_config = tomllib.load(f)
             _deep_merge(settings, user_config)
     else:
-        logger.info(
-            f"No configuration file found (checked {config_file}).  Using " f"defaults."
+        logger.warning(
+            f"No configuration file found (checked {config_file}).  Using defaults."
         )
 
     return settings
