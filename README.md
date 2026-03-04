@@ -11,6 +11,17 @@
 
 Track capital flows and narrative rotation across markets.
 
+## Tutorial
+The outputs from running in tutorial mode
+```bash
+marketflows --tutorial
+```
+should closely resemble the following plots.
+
+![Tutorial – Narratives](docs/images/tutorial_Narratives_MC_by_us-dollar.png)
+![Tutorial – Narratives_EMA](docs/images/tutorial_Narratives_MC_by_us-dollar_ema20.png)
+![Tutorial – Narratives_Table](docs/images/tutorial_Narratives_MC_by_us-dollar_percent_gains_table.png)
+
 ## How it works
 This program makes multiple queries when run and may be slow due to rate limits.
 
@@ -74,6 +85,10 @@ all normalized to better compare market cap increments/decrements (and thus pric
 The same can be said of the market cap ranges.  The exact coins would normally change at each 
 point in time, but we are more interested in whether the changes from one point in time to the 
 next is positive for a cap range and which range is growing fastest.
+
+
+## Future stuff
+Add caching so that provider doesn't need to be requeried every time.
 
 <!-- docs:end -->
 

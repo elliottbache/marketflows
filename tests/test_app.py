@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+from importlib import resources
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -275,6 +277,85 @@ class TestRunPipeline:
         assert seen[0]["flow_type"] == "market_cap_ranges"
         assert seen[0]["category"] == "Ranges"
         assert seen[0]["groups"] == ["899.0", "900.0", "901.0"]
+
+    def test_tutorial_uses_packaged_config_and_local_data(
+        self, tmp_path, monkeypatch, df_master
+    ):
+        def _should_not_be_called(*_a, **_k):
+            raise AssertionError("should not be called")
+
+        @contextmanager
+        def _as_file_ctx(p: Path):
+            # Mimic importlib.resources.as_file(...) returning a real pathlib.Path
+            yield p
+
+        config_path = tmp_path / "tutorial_config.toml"
+        config_path.write_text('provider = "coingecko"\n', encoding="utf-8")
+
+        # Force app.py to treat tutorial_config_path() as "some resource"
+        monkeypatch.setattr(app, "tutorial_config_path", lambda: config_path)
+
+        # If app.py uses importlib.resources.as_file, patch it to yield our config_path
+        monkeypatch.setattr(
+            resources, "as_file", lambda _traversable: _as_file_ctx(config_path)
+        )
+
+        # Record that load_and_validate_config got called with the tutorial config path
+        seen = {"cfg_path": None}
+
+        provider_config = SimpleNamespace(
+            provider="coingecko",
+            flow_types=[],  # avoid plotting branches here
+            narratives=[],
+            asset_groups={},
+            range_lower_limits=[],
+            base_assets=["us-dollar"],
+        )
+        analysis_config = SimpleNamespace()
+        plot_config = SimpleNamespace()
+
+        def fake_load_and_validate_config(path: Path):
+            seen["cfg_path"] = path
+            return provider_config, analysis_config, plot_config
+
+        monkeypatch.setattr(
+            app, "load_and_validate_config", fake_load_and_validate_config
+        )
+
+        # In tutorial mode we must NOT touch secrets/provider network
+        monkeypatch.setattr(app, "get_provider_credentials", _should_not_be_called)
+        monkeypatch.setattr(app, "load_coingecko_data", _should_not_be_called)
+
+        # Provide tutorial data
+        tutorial_data = SimpleNamespace(
+            asset_mcs={
+                "nvidia": pd.DataFrame({"timestamps": [0.0], "market_caps": [1.0]})
+            },
+            symbols={"nvidia": "nvda"},
+            narrative_assets={"ai": {"nvidia"}},
+        )
+        monkeypatch.setattr(app, "load_tutorial_data", lambda: tutorial_data)
+
+        # Stub the rest of the pipeline pieces
+        monkeypatch.setattr(
+            app,
+            "define_frequency_min_and_max_timestamp",
+            lambda _pc: ("5min", 0.0, 1.0),
+        )
+        monkeypatch.setattr(app, "create_master_df", lambda *_a, **_k: df_master)
+
+        # Ensure no plotting happens in this test
+        monkeypatch.setattr(app, "_create_plots_and_charts", _should_not_be_called)
+        monkeypatch.setattr(app, "_analyze_group_data", _should_not_be_called)
+
+        app.run_pipeline(
+            config_path=tmp_path / "ignored.toml",
+            secrets_path=tmp_path / "ignored_secrets.toml",
+            out_dir=tmp_path / "out",
+            is_tutorial=True,
+        )
+
+        assert seen["cfg_path"] == config_path
 
 
 def test_analyze_group_data_uses_aggregate_groups_when_df_groups_none(

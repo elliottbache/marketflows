@@ -2,8 +2,10 @@
 Run pipeline to query providers, analyze data, and create graphs.
 """
 
+from importlib import resources
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from marketflows.analysis.aggregates import (
@@ -29,28 +31,67 @@ from marketflows.providers.coingecko import (
     define_frequency_min_and_max_timestamp,
     load_coingecko_data,
 )
+from marketflows.tutorial.data import load_tutorial_data, tutorial_config_path
 from marketflows.types import FlowType
 
 
-def run_pipeline(*, secrets_path: Path, config_path: Path, out_dir: Path) -> None:
-    """Run complete pipeline for querying provider, analyzing data, and plotting."""
-    provider_config, analysis_config, plot_config = load_and_validate_config(
-        config_path
-    )
+def run_pipeline(
+    *, secrets_path: Path, config_path: Path, out_dir: Path, is_tutorial: bool = False
+) -> None:
+    """Run complete MarketFlows pipeline for querying provider, analyzing data,
+    and plotting.
 
-    api_key = get_provider_credentials(
-        provider_config.provider, secrets_path=secrets_path
-    )
-    if not api_key:
-        raise FileNotFoundError(f"API key was not correctly read from: {secrets_path}.")
+    In tutorial mode:
+      - config is loaded from the packaged tutorial config
+      - provider data is loaded from packaged local files (no secrets, no network)
 
-    asset_mcs, symbols, narrative_assets = load_coingecko_data(
-        api_key=api_key, provider_config=provider_config
-    )
+    Args:
+        secrets_path: Secrets file (ignored in tutorial mode).
+        config_path: Config file (ignored in tutorial mode).
+        out_dir: Output directory for plots/tables.
+        is_tutorial: If True, run offline tutorial pipeline.
+    """
+    if is_tutorial:
+        with resources.as_file(tutorial_config_path()) as path:
+            provider_config, analysis_config, plot_config = load_and_validate_config(
+                path
+            )
 
-    freq, min_timestamp, max_timestamp = define_frequency_min_and_max_timestamp(
-        provider_config
-    )
+        td = load_tutorial_data()
+        asset_mcs, symbols, narrative_assets = (
+            td.asset_mcs,
+            td.symbols,
+            td.narrative_assets,
+        )
+
+        freq, _, _ = define_frequency_min_and_max_timestamp(provider_config)
+        min_timestamp, max_timestamp = np.inf, -np.inf
+        for asset in asset_mcs:
+            if asset_mcs[asset]["timestamps"].iloc[0] < min_timestamp:
+                min_timestamp = asset_mcs[asset]["timestamps"].iloc[0]
+            if asset_mcs[asset]["timestamps"].iloc[-1] > max_timestamp:
+                max_timestamp = asset_mcs[asset]["timestamps"].iloc[-1]
+
+    else:
+        provider_config, analysis_config, plot_config = load_and_validate_config(
+            config_path
+        )
+
+        api_key = get_provider_credentials(
+            provider_config.provider, secrets_path=secrets_path
+        )
+        if not api_key:
+            raise FileNotFoundError(
+                f"API key was not correctly read from: {secrets_path}."
+            )
+
+        asset_mcs, symbols, narrative_assets = load_coingecko_data(
+            api_key=api_key, provider_config=provider_config
+        )
+
+        freq, min_timestamp, max_timestamp = define_frequency_min_and_max_timestamp(
+            provider_config
+        )
 
     df_master = create_master_df(
         asset_mcs, freq=freq, min_timestamp=min_timestamp, max_timestamp=max_timestamp

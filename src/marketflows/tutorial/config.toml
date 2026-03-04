@@ -1,0 +1,17 @@
+provider = "coingecko"
+
+[providers.coingecko]
+days = 91
+flow_types = ["narratives"]
+base_assets = []
+narratives = ["made-in-usa", "layer-1"]
+range_lower_limits = []
+
+[analysis]
+ema_periods = [20]
+diff_orders = [0]
+smoothing_ema = 10
+is_unit_normalize = false
+
+[plots]
+hours_ago = [4, 8, 12, 24, 48, 72, 168, 336, 672]
