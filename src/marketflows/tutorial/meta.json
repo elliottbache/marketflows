@@ -1,0 +1,47 @@
+{
+  "symbols": {
+    "ripple": "xrp",
+    "usd-coin": "usdc",
+    "solana": "sol",
+    "figure-heloc": "figr_heloc",
+    "cardano": "ada",
+    "chainlink": "link",
+    "stellar": "xlm",
+    "hedera-hashgraph": "hbar",
+    "litecoin": "ltc",
+    "paypal-usd": "pyusd",
+    "bitcoin": "btc",
+    "ethereum": "eth",
+    "binancecoin": "bnb",
+    "tron": "trx",
+    "bitcoin-cash": "bch",
+    "hyperliquid": "hype",
+    "monero": "xmr"
+  },
+  "narrative_assets": {
+    "made-in-usa": [
+      "cardano",
+      "chainlink",
+      "figure-heloc",
+      "hedera-hashgraph",
+      "litecoin",
+      "paypal-usd",
+      "ripple",
+      "solana",
+      "stellar",
+      "usd-coin"
+    ],
+    "layer-1": [
+      "binancecoin",
+      "bitcoin",
+      "bitcoin-cash",
+      "cardano",
+      "ethereum",
+      "hyperliquid",
+      "monero",
+      "ripple",
+      "solana",
+      "tron"
+    ]
+  }
+}

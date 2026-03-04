@@ -54,7 +54,7 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-marketflows = ["py.typed"]
+marketflows = ["py.typed", "tutorial/*.toml", "tutorial/*.csv", "tutorial/*.json"]
 
 [project.urls]
 Homepage = "https://github.com/elliottbache/marketflows"
@@ -100,7 +100,7 @@ ignore_errors = true
 
 [tool.codespell]
 skip = "./docs/_build,./build,./dist,./.venv,./docs/html,./src/include,./docs/_static,pyproject.toml,./build*,./htmlcov"
-ignore-words-list = "teh,nd,seh,atleast,atmost,deques,ser"
+ignore-words-list = "teh,nd,seh,atleast,atmost,deques,ser,requeried"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
