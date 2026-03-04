@@ -10,6 +10,7 @@ from marketflows import logging_utils
         ("TD Ameritrade", "TD_Ameritrade"),
         ("../../oops", "oops"),
         ("a/b\\c", "a_b_c"),
+        ("---", ""),
     ],
 )
 def test_sanitize_node(node, expected):
