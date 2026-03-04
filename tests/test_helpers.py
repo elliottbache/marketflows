@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 
 from marketflows import _helpers
-from marketflows.plots import _helpers as plots_helpers
 
 
 def test_name_column_success():
@@ -29,11 +28,16 @@ def test_name_column_success():
     )
 
 
-def test_order_suffixes_success(df_groups):
-    column = "amabyderivzon_ema1.5_deriv200_by_china-yuan"
-    column_out = _helpers._order_suffixes(column)
+class TestOrderSuffixes:
+    def test_success(self, df_groups):
+        column = "amabyderivzon_ema1.5_deriv200_by_china-yuan"
+        column_out = _helpers._order_suffixes(column)
 
-    assert column_out == "amabyderivzon_by_china-yuan_ema1.5_deriv200"
+        assert column_out == "amabyderivzon_by_china-yuan_ema1.5_deriv200"
+
+    def test_preserves_prefix_underscores(self):
+        col = "made_in_usa_growth_by_us-dollar"
+        assert _helpers._order_suffixes(col) == "made_in_usa_by_us-dollar_growth"
 
 
 class TestFindFirstValidTime:
@@ -42,7 +46,7 @@ class TestFindFirstValidTime:
             start="1970-01-01 00:00:00+0000", periods=3, freq="5min", tz="UTC"
         )
         df = pd.DataFrame({"nvidia": [np.nan, 900, 1100]}, index=idx)
-        first_valid = plots_helpers.find_first_valid_time(df)
+        first_valid = _helpers.find_first_valid_time(df)
         assert first_valid == pd.Timestamp("1970-01-01 00:05:00+0000", tz="UTC")
 
     def test_find_first_valid_time_no_valid(self):
@@ -53,7 +57,7 @@ class TestFindFirstValidTime:
             {"nvidia": [np.nan, np.nan, np.nan], "amazon": [np.nan, np.nan, np.nan]},
             index=idx,
         )
-        first_valid = plots_helpers.find_first_valid_time(df)
+        first_valid = _helpers.find_first_valid_time(df)
         assert first_valid is None
 
 
