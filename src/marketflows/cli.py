@@ -15,15 +15,30 @@ _DEFAULT_OUTPUT_DIR = "output_plots"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the MarketFlows CLI entrypoint.
 
-    parser = _parse_args(argv)
+    Parses command-line arguments, configures logging, resolves file paths, and
+    invokes the main pipeline runner.
+
+    Args:
+        argv: Optional argument vector (excluding the program name). If None,
+            arguments are read from the process command line.
+
+    Returns:
+        Exit code (0 on success).
+
+    Raises:
+        SystemExit: When invoked via the module entrypoint (see __main__ guard),
+            argparse may call SystemExit on invalid CLI arguments.
+    """
+    parser = _parse_args()
     ns = parser.parse_args(argv)
 
     configure_logging(level=ns.log_level, is_tutorial=ns.tutorial)
 
-    secrets_path = Path.cwd() / ns.secrets
-    config_path = Path.cwd() / ns.config
-    out_dir = Path.cwd() / ns.out_dir
+    secrets_path = _resolve_path(ns.secrets)
+    config_path = _resolve_path(ns.config)
+    out_dir = _resolve_path(ns.out_dir)
     run_pipeline(
         secrets_path=secrets_path,
         config_path=config_path,
@@ -34,7 +49,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def _parse_args(argv: Sequence[str] | None = None) -> argparse.ArgumentParser:
+def _parse_args() -> argparse.ArgumentParser:
     """Parse args from command line."""
     parser = argparse.ArgumentParser(
         prog="marketflows",
@@ -72,6 +87,13 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def _resolve_path(p: str) -> Path:
+    path = Path(p).expanduser()
+    out_path = path if path.is_absolute() else (Path.cwd() / path)
+
+    return out_path
 
 
 if __name__ == "__main__":
