@@ -42,7 +42,7 @@ def read_api_key(api_key_path: Path | None = None) -> str:
 
     # check that file is not larger than allowed read size
     if api_key_path.stat().st_size > _MAX_KEY_FILE_BYTES:
-        raise ValueError("API key file too large(> {_MAX_KEY_FILE_BYTES} bytes).")
+        raise ValueError(f"API key file too large(> {_MAX_KEY_FILE_BYTES} bytes).")
 
     api_key = api_key_path.read_text("utf-8").strip()
 
