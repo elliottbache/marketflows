@@ -83,9 +83,8 @@ def configure_logging(
     root.addHandler(err_handler)
 
     # define and create folder for saving log
-    if not node:
-        node = "marketflows"
-    log_file = pathlib.Path(_sanitize_node(node)).with_suffix(".log")
+    safe_node = _sanitize_node(node) or "marketflows"
+    log_file = pathlib.Path(safe_node).with_suffix(".log")
     fn = _default_log_dir() / log_file
 
     # for tutorial we don't want setup tests to be written to the log file, so we
