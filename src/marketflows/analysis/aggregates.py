@@ -5,8 +5,8 @@ def create_master_df(
     asset_mcs: dict[str, pd.DataFrame],
     *,
     freq: str,
-    min_timestamp: float,
-    max_timestamp: float,
+    min_timestamp: pd.Timestamp,
+    max_timestamp: pd.Timestamp,
 ) -> pd.DataFrame:
     """Create a master dataframe from the asset market caps.
 
@@ -35,10 +35,8 @@ def create_master_df(
         >>> df.index.name
         'Datetime'
     """
-    start_time = pd.to_datetime(min_timestamp, unit="ms", utc=True)
-    end_time = pd.to_datetime(max_timestamp, unit="ms", utc=True)
     time_index = pd.date_range(
-        start=start_time, end=end_time, freq=freq, name="Datetime"
+        start=min_timestamp, end=max_timestamp, freq=freq, name="Datetime"
     ).floor("s")
     df_master = pd.DataFrame(index=time_index)
 

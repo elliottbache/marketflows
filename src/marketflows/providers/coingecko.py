@@ -480,7 +480,7 @@ def _remove_faulty_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def define_frequency_min_and_max_timestamp(
     provider_config: ProviderConfig,
-) -> tuple[str, float, float]:
+) -> tuple[str, pd.Timestamp, pd.Timestamp]:
     """Define the frequency, minimum, and maximum timestamp retrieved from CoinGecko.
 
     Time spans that are lower than 1 day are set to 1 day.  Time spans that are higher
@@ -510,8 +510,8 @@ def define_frequency_min_and_max_timestamp(
         )
         freq = "5min"
         min_datetime = now - timedelta(days=1)
-        min_timestamp = min_datetime.replace(second=0, microsecond=0).timestamp() * 1000
-        max_timestamp = now.replace(second=0, microsecond=0).timestamp() * 1000
+        min_timestamp = pd.Timestamp(min_datetime.replace(second=0, microsecond=0))
+        max_timestamp = pd.Timestamp(now.replace(second=0, microsecond=0))
 
     elif provider_config.days <= 90:
         logger.info(
@@ -520,12 +520,10 @@ def define_frequency_min_and_max_timestamp(
         )
         freq = "h"
         min_datetime = now - timedelta(days=provider_config.days)
-        min_timestamp = (
-            min_datetime.replace(minute=0, second=0, microsecond=0).timestamp() * 1000
+        min_timestamp = pd.Timestamp(
+            min_datetime.replace(minute=0, second=0, microsecond=0)
         )
-        max_timestamp = (
-            now.replace(minute=0, second=0, microsecond=0).timestamp() * 1000
-        )
+        max_timestamp = pd.Timestamp(now.replace(minute=0, second=0, microsecond=0))
 
     elif provider_config.days < 365:
         logger.info(
@@ -534,12 +532,11 @@ def define_frequency_min_and_max_timestamp(
         )
         freq = "D"
         min_datetime = now - timedelta(days=provider_config.days)
-        min_timestamp = (
-            min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
-            * 1000
+        min_timestamp = pd.Timestamp(
+            min_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
         )
-        max_timestamp = (
-            now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000
+        max_timestamp = pd.Timestamp(
+            now.replace(hour=0, minute=0, second=0, microsecond=0)
         )
     else:
         logger.info(
@@ -548,12 +545,11 @@ def define_frequency_min_and_max_timestamp(
         )
         freq = "D"
         min_datetime = now - timedelta(days=provider_config.days)
-        min_timestamp = (
-            min_datetime.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
-            * 1000
+        min_timestamp = pd.Timestamp(
+            min_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
         )
-        max_timestamp = (
-            now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000
+        max_timestamp = pd.Timestamp(
+            now.replace(hour=0, minute=0, second=0, microsecond=0)
         )
 
     return freq, min_timestamp, max_timestamp

@@ -639,13 +639,10 @@ def test_define_frequency_min_and_max_timestamp_success(days, freq, days_ago, ms
     )
 
     assert frequency == freq
-    assert min_timestamp == pytest.approx(
+    assert min_timestamp.timestamp() * 1000 == pytest.approx(
         (datetime.now(UTC) - timedelta(days=days_ago)).timestamp() * 1000,
         abs=60000 + ms_tol,
     )
-    assert max_timestamp == pytest.approx(
+    assert max_timestamp.timestamp() * 1000 == pytest.approx(
         (datetime.now(UTC)).timestamp() * 1000, abs=60000 + ms_tol
     )
-
-    """print(days, frequency, min_timestamp, max_timestamp)
-    assert 0 == 1"""
