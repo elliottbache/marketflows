@@ -60,26 +60,43 @@ def _order_suffixes(column: str) -> str:
     """Given a column name with suffixes, return a column with suffixes in deterministic
     order."""
     parts = column.split("_")
-    prefix, suffixes = parts[0], parts[1:]
 
-    try:
-        base_asset = suffixes[suffixes.index("by") + 1]
-    except ValueError:
-        base_asset = ""
-
-    ema_period, diff_order = "", ""
+    prefix_parts: list[str] = []
+    base_asset = ""
+    ema_period = ""
+    diff_order = ""
     is_unit = False
-    for suffix in suffixes:
-        if suffix == "growth" or suffix == "inflection" or suffix.startswith("deriv"):
-            diff_order = str(suffix)
 
-        if suffix[:3] == "ema":
-            ema_period = str(suffix)
+    i = 0
+    while i < len(parts):
+        p = parts[i]
 
-        if suffix[:4] == "unit":
+        if p == "by" and i + 1 < len(parts):
+            base_asset = parts[i + 1]
+            i += 2
+            continue
+
+        if p.startswith("ema"):
+            ema_period = p
+            i += 1
+            continue
+
+        if p in {"growth", "inflection"} or p.startswith("deriv"):
+            diff_order = p
+            i += 1
+            continue
+
+        if p == "unit":
             is_unit = True
+            i += 1
+            continue
 
-    out = f"{prefix}"
+        prefix_parts.append(p)
+        i += 1
+
+    prefix = "_".join([x for x in prefix_parts if x])  # drop empty tokens
+
+    out = prefix
     if base_asset:
         out += f"_by_{base_asset}"
     if ema_period:
