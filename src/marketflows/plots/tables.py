@@ -175,6 +175,8 @@ def _calculate_groups_gains(
 ) -> pd.DataFrame:
     """Calculate the gains for all groups of a specific category.
 
+    The last valid time for all of these related groups is used to set time offsets.
+
     Examples:
         >>> import pandas as pd
         >>> idx = pd.date_range("2000-01-01", periods=3, freq="h", tz="UTC")
@@ -223,7 +225,7 @@ def _calculate_groups_gains(
             last_time=last_time,
         )
 
-        # change column name to only leave suffix for table row labels
+        # change column name to only leave group for table row labels
         gains.name = group
 
         if not gains.isna().all():

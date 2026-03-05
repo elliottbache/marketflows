@@ -64,7 +64,7 @@ def test_create_category_tables(monkeypatch, df_groups, tmp_path):
 
 
 class TestCreateTable:
-    def test_create_table_adds_lines(self, df_groups, tmp_path, hours_ago):
+    def test_create_table_adds_table(self, df_groups, tmp_path, hours_ago):
         df_groups = df_groups.copy()
         df_groups.index = pd.date_range(
             end=pd.Timestamp("1971-01-01 00:00:00+0000", tz="UTC"),
@@ -79,7 +79,7 @@ class TestCreateTable:
         )
 
         fig, ax = plt.subplots()
-        out_file = tmp_path / "test.png"
+        out_dir = tmp_path / "output_plots"
         _ = plots_tables._create_table(
             flow_type="narratives",
             category="Narratives",
@@ -89,7 +89,7 @@ class TestCreateTable:
             df=df_groups,
             hours_ago=hours_ago,
             ax=ax,
-            out_dir=out_file,
+            out_dir=out_dir,
         )
 
         # assert that a title was added
@@ -122,8 +122,8 @@ class TestCreateTable:
             columns={"pharma": "pharma_by_us-dollar", "ai": "ai_by_us-dollar"}
         )
 
-        out_file = tmp_path / "test.png"
-        out_file = plots_tables._create_table(
+        out_dir = tmp_path / "output_plots"
+        out_path = plots_tables._create_table(
             flow_type="narratives",
             category="Narratives",
             base_asset="us-dollar",
@@ -131,11 +131,13 @@ class TestCreateTable:
             groups=["pharma", "ai"],
             df=df_groups,
             hours_ago=hours_ago,
-            out_dir=out_file,
+            out_dir=out_dir,
         )
-        assert out_file.exists()
-        assert out_file.stat().st_size > 0
-        assert out_file.suffix == ".png"
+        assert out_path.stat().st_size > 0
+        assert out_path.exists()
+        assert out_path.is_file()
+        assert out_path.suffix == ".png"
+        assert out_path.parent == out_dir
 
 
 @pytest.mark.parametrize(
@@ -249,15 +251,15 @@ def test_calculate_groups_gains(
     df_groups["ai_by_us-dollar"] = ai_values
 
     df_out = plots_tables._calculate_groups_gains(
-        groups=["pharma_by_us-dollar", "ai_by_us-dollar"],
+        groups=["pharma", "ai"],
         df=df_groups,
         hours_ago=hours_ago,
     )
 
     df_exp = pd.DataFrame(
         data={
-            "pharma_by_us-dollar": pharma_values_exp,
-            "ai_by_us-dollar": ai_values_exp,
+            "pharma": pharma_values_exp,
+            "ai": ai_values_exp,
         },
         index=last_time_exp - pd.to_timedelta(hours_ago, unit="h"),
         dtype=np.float64,
