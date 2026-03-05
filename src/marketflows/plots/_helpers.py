@@ -85,7 +85,7 @@ def find_last_valid_time(df: pd.DataFrame) -> pd.Timestamp | None:
         >>> import pandas as pd
         >>> idx = pd.date_range("2020-01-01", periods=3, freq="1s", tz="UTC")
         >>> df = pd.DataFrame({"a": [1.0, 2.0, None], "b": [1.0, 2.0, 3.0]}, index=idx)
-        >>> _find_last_valid_time(df) == idx[1]
+        >>> find_last_valid_time(df) == idx[1]
         True
     """
     last_indices = df.apply(lambda x: x.last_valid_index())
@@ -123,11 +123,11 @@ def create_nice_plot_text(
         string to be used for title or file name
 
     Examples:
-        >>> _create_nice_plot_text(text_type="file_name", group="narratives")
+        >>> create_nice_plot_text(text_type="file_name", group="narratives")
         'narratives_MC_by_us-dollar'
-        >>> _create_nice_plot_text(text_type="plot_title", group="narratives")
+        >>> create_nice_plot_text(text_type="plot_title", group="narratives")
         'narratives MC by us-dollar'
-        >>> _create_nice_plot_text(text_type="file_name", group="narratives", diff_order=1, is_unit=True)
+        >>> create_nice_plot_text(text_type="file_name", group="narratives", diff_order=1, is_unit=True)
         'narratives_MC_by_us-dollar_growth_smooth10_unit'
     """
     plot_text = name_column(
@@ -152,37 +152,35 @@ def create_nice_plot_text(
 
 def split_column(column: str) -> dict[str, str]:
     """Take column name and extract its different parameters."""
-    substrings = column.split("_")
+    out = {"ema_period": "1", "diff_order": "0", "is_unit": "False"}
 
-    column_params = dict()
-    column_params["group"] = substrings[0]
-    substrings = substrings[1:]
-    while len(substrings) > 0:
-        if substrings[0] == "by":
-            column_params["base_asset"] = substrings[1]
-            substrings = substrings[1:]
+    core = column
+    if core.endswith("_unit"):
+        out["is_unit"] = "True"
+        core = core[: -len("_unit")]
 
-        elif substrings[0].startswith("ema"):
-            column_params["ema_period"] = substrings[0][len("ema") :]
+    if "_by_" not in core:
+        out["group"] = core
+        return out
 
-        elif substrings[0].startswith("growth"):
-            column_params["diff_order"] = "1"
+    group, _, tail = core.partition("_by_")
+    out["group"] = group
 
-        elif substrings[0].startswith("inflection"):
-            column_params["diff_order"] = "2"
+    parts = tail.split("_")
+    if parts:
+        out["base_asset"] = parts[0]
 
-        elif substrings[0].startswith("deriv"):
-            column_params["diff_order"] = substrings[0][len("deriv") :]
+    for part in parts[1:]:
+        if part.startswith("ema"):
+            out["ema_period"] = part[len("ema") :]
+        elif part == "growth":
+            out["diff_order"] = "1"
+        elif part == "inflection":
+            out["diff_order"] = "2"
+        elif part.startswith("deriv"):
+            out["diff_order"] = part[len("deriv") :]
 
-        elif substrings[0] == "unit":
-            column_params["is_unit"] = "True"
-
-        substrings = substrings[1:]
-
-    if "is_unit" not in column_params:
-        column_params["is_unit"] = "False"
-
-    return column_params
+    return out
 
 
 def create_label(
@@ -247,34 +245,24 @@ def _make_group_columns(
     is_unit: bool | None = None,
 ) -> list[str]:
     """Create a sublist of columns that have the same parameters."""
-    reduced_columns = list()
+    reduced_columns = []
     for column in df.columns:
         column_params = split_column(column)
 
         if groups is not None and column_params["group"] not in groups:
             continue
-        if (
-            base_asset is not None
-            and "base_asset" in column_params
-            and column_params["base_asset"] != base_asset
+        if base_asset is not None and column_params.get("base_asset") != base_asset:
+            continue
+        if ema_period is not None and column_params.get("ema_period") != str(
+            ema_period
         ):
             continue
-        if (
-            ema_period is not None
-            and "ema_period" in column_params
-            and column_params["ema_period"] != str(ema_period)
+        if diff_order is not None and column_params.get("diff_order") != str(
+            diff_order
         ):
             continue
-        if (
-            diff_order is not None
-            and "diff_order" in column_params
-            and column_params["diff_order"] != str(diff_order)
-        ):
+        if is_unit is not None and (column_params.get("is_unit") == "True") != is_unit:
             continue
-        if is_unit is not None and "is_unit" in column_params:
-            this_is_unit = column_params["is_unit"] == "True"
-            if this_is_unit != is_unit:
-                continue
 
         reduced_columns.append(column)
 
