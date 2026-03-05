@@ -88,11 +88,21 @@ class ProviderConfig:
         ]
         self.base_assets.insert(0, "us-dollar")
 
+        # check that base assets don't have underscores
+        for asset in self.base_assets:
+            if "_" in asset:
+                raise ValueError("Base asset cannot contain underscore.")
+
         # check that we have narratives list if using this flow type
         if "narratives" in self.flow_types and not self.narratives:
             raise ValueError("Missing narratives list.")
         # deduplicate
         self.narratives = list(dict.fromkeys(self.narratives))
+
+        # check that narratives don't have underscores
+        for narrative in self.narratives:
+            if "_" in narrative:
+                raise ValueError("Narratives cannot contain underscore.")
 
         # check that we have range lower limits if using this flow type
         if "market_cap_ranges" in self.flow_types and not self.range_lower_limits:
@@ -103,6 +113,18 @@ class ProviderConfig:
         # check that we have asset groups if we use individual asset flow type
         if "individual_assets" in self.flow_types and not self.asset_groups:
             raise ValueError("Missing dict of asset groups.")
+
+        # check that asset groups don't have underscores
+        for asset_group in self.asset_groups:
+            if "_" in asset_group:
+                raise ValueError("Asset group cannot contain underscore.")
+
+            # check that assets don't have underscores
+            if isinstance(self.asset_groups[asset_group], list):
+                for asset in self.asset_groups[asset_group]:
+                    if "_" in asset:
+                        raise ValueError("Asset cannot contain underscore.")
+
         # check that we don't use a reserved name for one of the asset groups
         taken_names = {"Narratives", "Portfolios", "Ranges"}
         for group in self.asset_groups:
