@@ -96,9 +96,6 @@ def _plot_single_chart(
         diff_order=diff_order,
     )
 
-    # enlarge plot
-    plt.rcParams["figure.figsize"] = [_DEFAULT_X_SIZE, _DEFAULT_Y_SIZE]
-
     # create plot
     if ax is None:
         fig, ax = plt.subplots(figsize=(_DEFAULT_X_SIZE, _DEFAULT_Y_SIZE))
