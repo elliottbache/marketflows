@@ -92,18 +92,20 @@ class TestPlotSingleChart:
         df_groups = df_groups.rename(
             columns={"pharma": "pharma_by_us-dollar", "ai": "ai_by_us-dollar"}
         )
-        out_file = tmp_path / "test.png"
-        out_file = charts._plot_single_chart(
+        out_dir = tmp_path / "output_plots"
+        out_path = charts._plot_single_chart(
             flow_type="narratives",
             category="Narratives",
             groups=["pharma", "ai"],
             symbols={"pharma": "Rx", "ai": "AI"},
             df=df_groups,
-            out_dir=out_file,
+            out_dir=out_dir,
         )
-        assert out_file.exists()
-        assert out_file.stat().st_size > 0
-        assert out_file.suffix == ".png"
+        assert out_path is not None
+        assert out_path.exists()
+        assert out_path.is_file()
+        assert out_path.suffix == ".png"
+        assert out_path.parent == out_dir
 
 
 class TestDefineMarker:
