@@ -90,6 +90,32 @@ class TestProviderConfig:
         )
         assert cfg.provider == ""
 
+    @pytest.mark.parametrize(
+        "asset_groups, exc_msg",
+        [
+            (
+                {"my_group": ["nvidia", "amazon"]},
+                "Asset group cannot contain underscore",
+            ),
+            (
+                {"mygroup": ["tesla_stock", "amazon"]},
+                "Asset cannot contain underscore",
+            ),
+        ],
+        ids=["group_name_has_underscore", "asset_name_has_underscore"],
+    )
+    def test_provider_config_underscores_raise(self, asset_groups, exc_msg):
+        with pytest.raises(ValueError, match=exc_msg):
+            config.ProviderConfig(
+                provider="td-ameritrade",
+                days=10,
+                flow_types=["individual_assets"],
+                base_assets=[],
+                narratives=[],
+                range_lower_limits=[],
+                asset_groups=asset_groups,
+            )
+
 
 class TestAnalysisConfig:
 
