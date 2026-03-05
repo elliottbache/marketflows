@@ -19,8 +19,21 @@ def symbols():
     ],
 )
 def test_define_graph_origin(order, graph_origin, df_groups, monkeypatch):
-    # set last two records to NaN
     df_groups = df_groups.copy()
+
+    # rename to realistic metric columns
+    rename_map = {}
+    for col in df_groups.columns:
+        if order == 0:
+            rename_map[col] = f"{col}_by_us-dollar"
+        elif order == 1:
+            rename_map[col] = f"{col}_by_us-dollar_growth"
+        else:
+            rename_map[col] = f"{col}_by_us-dollar_inflection"
+
+    df_groups = df_groups.rename(columns=rename_map)
+
+    # set last two records to NaN
     df_groups.loc[pd.Timestamp("1970-01-01 00:20:00+0000", tz="UTC"), :] = np.nan
     df_groups.loc[pd.Timestamp("1970-01-01 00:25:00+0000", tz="UTC"), :] = np.nan
 
@@ -77,7 +90,7 @@ def test_create_nice_plot_text():
 
 
 def test_split_column_success():
-    column = "amabyderivzon_ema1.5_growth_by_china-yuan"
+    column = "amabyderivzon_by_china-yuan_ema1.5_growth"
     column_out = plots_helpers.split_column(column)
 
     assert column_out == {
