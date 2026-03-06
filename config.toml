@@ -2,20 +2,33 @@ provider = "coingecko"
 
 [providers.coingecko]
 days = 91
-flow_types = ["narratives", "individual_assets", "market_cap_ranges"]
+flow_types = ["narratives", "market_cap_ranges", "individual_assets"]
+
+# Base assets used as denominators for normalization.
+# "us-dollar" is always inserted as the first element by validation.
 base_assets = ["bitcoin"]
+
+# CoinGecko category slugs (used for narratives).
 narratives = ["made-in-usa", "aave-tokens"]
+
+# Lower limits (USD) for market-cap ranges.
 range_lower_limits = [1e9, 1e10]
 
+# Named portfolios/groups (lists of CoinGecko coin IDs).
 [providers.coingecko.asset_groups]
-Bullmind = ["zano", "superfarm"]
-cryptocapo = ["haha", "mstr2100"]
+MyPortfolio = ["bitcoin", "ethereum"]
+AltBag = ["solana", "ripple"]
 
 [analysis]
+# Requested EMA spans (periods). 1 is always inserted by validation.
 ema_periods = [20]
+# Differentiation orders. For narratives and individual assets, this expands to [0..max].
 diff_orders = [0, 1, 2]
+# EMA span used to smooth derivatives (narratives / portfolios).
 smoothing_ema = 10
+# Add per-timestep unit normalization columns (..._unit).
 is_unit_normalize = true
 
 [plots]
+# Offsets used for percent-gain tables.
 hours_ago = [4, 8, 12, 24, 48, 72, 168, 336, 672]
