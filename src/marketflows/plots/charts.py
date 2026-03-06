@@ -150,6 +150,15 @@ def _plot_single_chart(
         plt.close(fig.figure)
         return None
 
+    if min_mc == max_mc:
+        plt.close(fig.figure)
+        logger.warning(
+            f"Skipping plot for {flow_type} {category} {groups} base_asset={base_asset}"
+            f" EMA{ema_period} diff_order={diff_order} is_unit={is_unit} since it has "
+            f"no valid data."
+        )
+        return None
+
     # beautify the x-labels
     fig.autofmt_xdate()
 
