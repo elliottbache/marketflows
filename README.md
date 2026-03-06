@@ -88,7 +88,8 @@ next is positive for a cap range and which range is growing fastest.
 
 
 ## Future stuff
-Add caching so that provider doesn't need to be requeried every time.
+- Add caching so that provider doesn't need to be requeried every time.
+- Remove gold and stables from ranges and narratives
 
 <!-- docs:end -->
 
