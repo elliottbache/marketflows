@@ -1,0 +1,10 @@
+services:
+  marketflows:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - .:/app
+    command: ["marketflows"]

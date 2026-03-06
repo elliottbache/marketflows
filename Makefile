@@ -36,7 +36,7 @@ setup: clean deps install-dev
 
 .PHONY: deps
 deps:
-	bash scripts/install-python-deps.sh
+	bash install-python-deps.sh
 
 .PHONY: ci
 ci: install-dev
