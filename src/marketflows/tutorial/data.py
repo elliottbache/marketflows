@@ -1,3 +1,8 @@
+"""Tutorial data loader.
+
+Loads a packaged config and a small packaged dataset used by `--tutorial` mode.
+"""
+
 import json
 from dataclasses import dataclass
 from importlib import resources

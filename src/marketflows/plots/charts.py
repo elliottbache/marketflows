@@ -1,3 +1,9 @@
+"""Chart rendering.
+
+Generates PNG line charts for selected groups, base assets, EMA periods, and
+derivative orders.
+"""
+
 import logging
 import math
 from pathlib import Path
