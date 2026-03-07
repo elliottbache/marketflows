@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "marketflows"
-version = "1.0.0"
+version = "0.1.0"
 description = "Track capital flows and narrative rotation across markets."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -31,11 +31,11 @@ dev = [
   "sphinx_rtd_theme",
   "myst-parser>=3.0",
   "pre-commit",
-  "ruff==v0.14.10",
+  "ruff==0.14.10",
   "black==25.12.0",  # same as pre-commit
   "isort",
-  "mypy==v1.13.0",
-  "codespell==v2.4.1",
+  "mypy==1.13.0",
+  "codespell==2.4.1",
   "pytest-cov",
   "pandas-stubs",
   "types-requests",
