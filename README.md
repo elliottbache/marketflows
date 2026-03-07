@@ -449,6 +449,37 @@ The point is to avoid a common pitfall: labeling an asset as “micro-cap” (or
 - `marketflows/plots/*` writes PNG charts and tables
 - `marketflows/tutorial/*` ships an offline dataset + config for `--tutorial`
 
+## Contributing
+
+To contribute to the development of MarketFlows, follow the steps below:
+
+1. Fork MarketFlows from <https://github.com/elliottbache/marketflows/fork>
+2. Create your feature branch (`git checkout -b feature-new`)
+3. Make your changes
+4. Commit your changes (`git commit -am 'Add some new feature'`)
+5. Push to the branch (`git push origin feature-new`)
+6. Create a new pull request
+
+For more info, see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## Contributors
+
+Here's the list of people who have contributed to MarketFlows:
+
+- Elliott Bache – elliottbache@gmail.com
+
+The MarketFlows development team really appreciates and thanks the time and effort that all
+these fellows have put into the project's growth and improvement.
+
+## Author
+
+- Elliott Bache – elliottbache@gmail.com
+
+## Change log
+
+- 0.1.0
+    - First public MarketFlows release
+
 ## License
 
 GPL-3.0. See `LICENSE`.
