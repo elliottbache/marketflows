@@ -54,7 +54,7 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-marketflows = ["py.typed", "tutorial/*.toml", "tutorial/*.csv", "tutorial/*.json"]
+marketflows = ["py.typed", "tutorial/*.toml", "tutorial/*.csv", "tutorial/*.json", "tutorial/*.log"]
 
 [project.urls]
 Homepage = "https://github.com/elliottbache/marketflows"
