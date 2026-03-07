@@ -69,4 +69,4 @@ napoleon_numpy_docstring = True
 # html_theme = 'alabaster'
 html_theme = "sphinx_rtd_theme"
 
-html_static_path = ['_static']
+html_static_path = ["_static"]
