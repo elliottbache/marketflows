@@ -504,6 +504,8 @@ these fellows have put into the project's growth and improvement.
 
 - 0.1.0
     - First public MarketFlows release
+- 0.1.1
+    - Add PyPi automated releases and CoinGecko API key creation information to README.md
 
 ## License
 
