@@ -29,7 +29,7 @@ def create_master_df(
         ...         {"timestamps": [0, 1000], "market_caps": [10.0, 20.0]}
         ...     )
         ... }
-        >>> df = create_master_df(asset_mcs, freq="1s", min_timestamp=0, max_timestamp=1000)
+        >>> df = create_master_df(asset_mcs, freq="1s", min_timestamp=pd.Timestamp(0, unit="ms", tz="UTC"), max_timestamp=pd.Timestamp(1000, unit="ms", tz="UTC"))
         >>> df.to_dict("list")
         {'nvidia': [10.0, 20.0]}
         >>> df.index.name

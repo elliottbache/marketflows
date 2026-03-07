@@ -16,7 +16,10 @@ _DEFAULTS = {
             "narratives": ["made-in-usa", "ai"],
             "range_lower_limits": [1e9, 1e10],
             "flow_types": ["narratives", "individual_assets", "market_cap_ranges"],
-            "asset_groups": {"Top": ["bitcoin", "ethereum", "binancecoin"], "Risk": ["the-open-network", "zcash", "world-liberty-financial"]},
+            "asset_groups": {
+                "Top": ["bitcoin", "ethereum", "binancecoin"],
+                "Risk": ["the-open-network", "zcash", "world-liberty-financial"],
+            },
         },
     },
     "analysis": {
