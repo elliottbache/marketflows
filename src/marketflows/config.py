@@ -1,3 +1,8 @@
+"""Configuration loading and validation.
+
+Parses TOML settings into dataclasses, applies defaults, and enforces basic
+sanity/consistency checks for providers, analysis, and plotting.
+"""
 import copy
 import logging
 import tomllib
