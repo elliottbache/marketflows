@@ -45,20 +45,13 @@ by:
 api_key = "cg_..."
 ```
 
-Then run MarketFlows with the secrets file:
-
-```bash
-marketflows --config config.toml --secrets secrets.toml
-```
-
 Notes:
 - Keep `secrets.toml` out of git (it has been added to `.gitignore`).
 - Tutorial mode does not need an API key (see [tutorial mode](#tutorial-mode-offline).
 
 ### Configure
 
-1) Create `secrets.toml` (see [Secrets](#coingecko-api-key-setup))
-2) Edit `config.toml` (see [Configuration](#configuration))
+Edit `config.toml` (see [Configuration](#configuration))
 
 ### Quickstart (recommended): Local (Ubuntu/WSL)
 In an Ubuntu/WSL terminal:
