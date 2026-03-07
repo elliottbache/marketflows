@@ -61,7 +61,8 @@ def test_plot_charts_success(df_groups, monkeypatch, tmp_path):
 
 class TestPlotSingleChart:
     def test_plot_single_chart_adds_lines(self, df_groups, tmp_path):
-        tmp_file = tmp_path / "test.png"
+        out_dir = tmp_path / "output_plots"
+        out_dir.mkdir(parents=True, exist_ok=True)
         df_groups = df_groups.copy()
         df_groups = df_groups.rename(
             columns={
@@ -70,7 +71,7 @@ class TestPlotSingleChart:
             }
         )
         fig, ax = plt.subplots()
-        _ = charts._plot_single_chart(
+        out_path = charts._plot_single_chart(
             flow_type="narratives",
             category="Narratives",
             groups=["pharma", "ai"],
@@ -80,11 +81,12 @@ class TestPlotSingleChart:
             ema_period=5,
             diff_order=1,
             ax=ax,
-            out_dir=tmp_file,
+            out_dir=out_dir,
         )
         assert len(ax.get_lines()) == len(df_groups.columns)
         assert ax.get_title() is not None
         assert ax.get_legend() is not None
+        assert out_path is not None and out_path.exists()
         plt.close(fig)
 
     def test_plot_single_chart_creates_file(self, df_groups, tmp_path):

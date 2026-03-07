@@ -8,7 +8,7 @@ import sys
 
 # Add the project root (the folder that contains `src/`) to sys.path
 sys.path.insert(0, os.path.abspath(".."))
-# src/ directory (so `import irs_asset_fifo_calculator` works)
+# src/ directory (so `import marketflows` works)
 sys.path.insert(0, os.path.abspath("../src"))
 
 # -- Project information -----------------------------------------------------

@@ -58,7 +58,7 @@ Expected tutorial log lives here: `src/marketflows/tutorial/expected_marketflows
 
 Actual tutorial log lives here on Ubuntu/WSL: `XDG_STATE_HOME/marketflows/logs/`
 
-If `XDG_STATE_HOME` is not set, it defaults to: `~/.local/state/tlslp/logs/`
+If `XDG_STATE_HOME` is not set, it defaults to: `~/.local/state/marketflows/logs/`
 
 ### Quickstart (alternative): Docker
 Use this if you prefer Docker.  Otherwise, use the [local quickstart](#quickstart-recommended-local-ubuntuwsl) 
