@@ -3,6 +3,7 @@
 
 [![CI](https://github.com/elliottbache/marketflows/actions/workflows/ci.yaml/badge.svg)](https://github.com/elliottbache/marketflows/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/github/elliottbache/marketflows/graph/badge.svg?token=kNwbaexX4N)](https://codecov.io/github/elliottbache/marketflows)
+[![PyPI](https://img.shields.io/pypi/v/marketflows.svg)](https://pypi.org/project/marketflows/)
 [![Release](https://img.shields.io/github/v/release/elliottbache/marketflows)](https://github.com/elliottbache/marketflows/releases)
 [![License: GPL-3.0](https://img.shields.io/badge/license-%20%20GNU%20GPLv3%20-green?style=plastic)](https://github.com/elliottbache/marketflows/blob/main/LICENSE)
 
