@@ -125,7 +125,7 @@ From within the Python virtual environment (see [Virtual environment](#create-an
 ```bash
 marketflows
 ```
-Various flags are available for running in CLI (see [CLI flags](#flags)).  For a complete list, run
+Various flags are available for running in CLI (see [CLI flags](#cli)).  For a complete list, run
 ```bash
 marketflows --help
 ```
@@ -148,7 +148,7 @@ against committed “golden” results.
 marketflows --tutorial
 ```
 
-The expected results can be found [here](#tutorial-mode).
+The expected results can be found [here](#tutorial-mode-offline).
 
 ## CLI
 
