@@ -1,3 +1,9 @@
+"""Metric calculations for analysis.
+
+Computes normalized series (by base asset and first valid record), optional EMAs,
+derivatives (growth/inflection), optional smoothing, and optional unit scaling.
+"""
+
 import logging
 
 import numpy as np

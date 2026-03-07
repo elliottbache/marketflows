@@ -1,3 +1,9 @@
+"""Table rendering.
+
+Generates PNG percent-gain tables over configured time offsets for each category
+and base asset.
+"""
+
 import datetime
 import logging
 from pathlib import Path

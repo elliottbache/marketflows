@@ -1,3 +1,9 @@
+"""Aggregation helpers for analysis.
+
+Builds a master time index, aggregates assets into groups and market-cap ranges,
+and prepares long-form data for bucketed range calculations.
+"""
+
 import pandas as pd
 
 
