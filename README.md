@@ -27,9 +27,36 @@ git clone https://github.com/elliottbache/marketflows.git
 cd marketflows
 ```
 
+## CoinGecko API key (setup)
+
+MarketFlows uses CoinGecko’s API. For normal runs (non-tutorial), you’ll need an API key.
+
+1) Create a CoinGecko account and sign in.
+2) Go to the CoinGecko API dashboard and create an API key.  At the time of writing, this is done
+by:
+   1) Going to https://www.coingecko.com/en/api
+   2) Clicking on "Get Your API Key Now"
+   3) Create Free Account
+3) Put the key in `secrets.toml`:
+
+```toml
+[coingecko]
+api_key = "cg_..."
+```
+
+Then run MarketFlows with the secrets file:
+
+```bash
+marketflows --config config.toml --secrets secrets.toml
+```
+
+Notes:
+- Keep `secrets.toml` out of git (it has been added to `.gitignore`).
+- Tutorial mode does not need an API key (see [tutorial mode](#tutorial-mode-offline).
+
 ### Configure
 
-1) Create `secrets.toml` (see [Secrets](#secrets))
+1) Create `secrets.toml` (see [Secrets](#coingecko-api-key-setup))
 2) Edit `config.toml` (see [Configuration](#configuration))
 
 ### Quickstart (recommended): Local (Ubuntu/WSL)
@@ -264,16 +291,6 @@ hours_ago = [4, 8, 12, 24, 48, 72, 168, 336, 672]
 - `range_lower_limits` must be present if `flow_types` includes `market_cap_ranges`
 - `asset_groups` must be present if `flow_types` includes `individual_assets`
 
-## Secrets
-
-Create a `secrets.toml` with a provider table containing an `api_key`:
-
-```toml
-[coingecko]
-api_key = "cg_..."
-```
-
-In tutorial mode, secrets are ignored.
 
 
 ## What is output and why
