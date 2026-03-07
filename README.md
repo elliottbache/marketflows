@@ -50,9 +50,9 @@ make run FLAGS="--tutorial"
 
 You should get charts and tables in `output_plots/` that resemble:
 
-![Tutorial – Narratives](docs/images/tutorial_Narratives_MC_by_us-dollar.png)
-![Tutorial – Narratives (EMA)](docs/images/tutorial_Narratives_MC_by_us-dollar_ema20.png)
-![Tutorial – Narratives (Table)](docs/images/tutorial_Narratives_MC_by_us-dollar_percent_gains_table.png)
+![Tutorial – Narratives](./docs/_static/tutorial_Narratives_MC_by_us-dollar.png)
+![Tutorial – Narratives (EMA)](./docs/_static/tutorial_Narratives_MC_by_us-dollar_ema20.png)
+![Tutorial – Narratives (Table)](./docs/_static/tutorial_Narratives_MC_by_us-dollar_percent_gains_table.png)
 
 Expected tutorial log lives here: `src/marketflows/tutorial/expected_marketflows.log`
 
@@ -307,6 +307,62 @@ at each time step, making the highest value 1 and the lowest value 0.
 This table is generating using time offsets.  ``hours_ago`` defines the number of hours of each
 of the offsets and by default is set for 4 hours, 8 hours, 12 hours, 1 day, 2 days, 3 days, 1 week, 2 weeks, 
 and 1 month.  The table will then show the percent gains from 4 hours ago, 8 hours ago, etc.
+
+## Metric transformations (order of operations)
+
+MarketFlows applies a small, consistent set of transformations to turn raw market-cap series into “comparable” curves. The exact order matters.
+
+### Narratives / portfolios / individual assets
+
+For each group series and each selected `base_asset`:
+
+1) **Base-asset normalization**  
+   Divide the group series by the chosen base asset series (skip for `us-dollar`).
+
+2) **First-record normalization (per series)**  
+   Divide by the first valid value (so each curve starts at ~1.0 at its first usable timestamp).
+
+3) **EMA (optional, per `ema_period`)**  
+   Compute EMA on the normalized 0th-order series.
+
+4) **Differentiation (per `diff_order`)**  
+   - `growth` (1st derivative) and `inflection` (2nd derivative) are computed on the chosen series
+     (raw or EMA-smoothed, depending on `ema_period`).
+
+5) **Smoothing EMA (applied to derivatives)**  
+   A separate EMA (`smoothing_ema`) is applied after differentiation to reduce derivative noise.
+
+6) **Unit normalization (optional)**  
+   If enabled, add `*_unit` columns using per-timestep min/max scaling across groups for the same suffix
+   (so values fall in `[0, 1]` at each timestamp).
+
+### Market-cap ranges
+
+Ranges have one extra “bucketing” step and a slightly different derivative path:
+
+0) **Bucketing (per timestamp)**  
+   Each asset is assigned to a range bucket at each timestamp based on market cap; bucket totals are summed.
+
+Then, for each selected `base_asset`:
+
+1) **Base-asset normalization**  
+   Divide bucket totals by the chosen base asset series (skip for `us-dollar`).
+
+2) **First-record normalization (per bucket series)**  
+   Divide by the first valid value so each bucket curve is comparable from its first usable timestamp.
+
+3) **Differentiation (limited to 0/1/2 for ranges)**  
+   Growth/inflection use bucket membership shifted in time so bucket transitions are accounted for.
+
+4) **EMA (optional, per `ema_period`)**  
+   EMA is applied after derivatives are computed for ranges (as an additional smoothing option).
+
+5) **Unit normalization (optional)**  
+   Same idea as above: per-timestep min/max scaling across buckets for the same suffix.
+
+Notes:
+- The file names include the base asset, EMA period (when used), derivative (`growth`/`inflection`), and `_unit`.
+- Smoothing EMA is applied to derivatives for group-like series; ranges rely on derivative computation + optional EMA.
 
 ## Outputs
 
