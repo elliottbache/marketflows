@@ -463,6 +463,7 @@ The point is to avoid a common pitfall: labeling an asset as “micro-cap” (or
 ## Future work
 
 - Add optional caching so providers don’t need to be re-queried on every run.
+- Remove stables and gold from market cap ranges.
 - Generate a short markdown/HTML report that links the produced charts and tables.
 - Add more providers (and a cleaner provider interface) beyond CoinGecko.
 - Improve narrative definitions (e.g., configurable top-N selection and/or stable cohorts).
