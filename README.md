@@ -13,6 +13,10 @@ MarketFlows is a config-driven CLI that:
 - aggregates by narratives / portfolios / market-cap ranges,
 - outputs charts and percent-gain tables as PNGs (a short report is planned later).
 
+## Samples
+![Tutorial – Narratives](./docs/_static/tutorial_Narratives_MC_by_us-dollar.png)
+![Tutorial – Narratives (EMA)](./docs/_static/tutorial_Narratives_MC_by_us-dollar_ema20.png)
+![Tutorial – Narratives (Table)](./docs/_static/tutorial_Narratives_MC_by_us-dollar_percent_gains_table.png)
 
 ## Quickstart
 ### Download repo
@@ -48,11 +52,7 @@ the expected graphs.  Tutorial mode loads a packaged `config.toml` and packaged 
 make run FLAGS="--tutorial"
 ```
 
-You should get charts and tables in `output_plots/` that resemble:
-
-![Tutorial – Narratives](./docs/_static/tutorial_Narratives_MC_by_us-dollar.png)
-![Tutorial – Narratives (EMA)](./docs/_static/tutorial_Narratives_MC_by_us-dollar_ema20.png)
-![Tutorial – Narratives (Table)](./docs/_static/tutorial_Narratives_MC_by_us-dollar_percent_gains_table.png)
+You should get charts and tables in `output_plots/` that resemble [these plots](#samples):
 
 Expected tutorial log lives here: `src/marketflows/tutorial/expected_marketflows.log`
 
