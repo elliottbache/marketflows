@@ -127,7 +127,8 @@ def create_nice_plot_text(
         'narratives_MC_by_us-dollar'
         >>> create_nice_plot_text(text_type="plot_title", group="narratives")
         'narratives MC by us-dollar'
-        >>> create_nice_plot_text(text_type="file_name", group="narratives", diff_order=1, is_unit=True)
+        >>> create_nice_plot_text(text_type="file_name", group="narratives",
+        ...                       diff_order=1, is_unit=True)
         'narratives_MC_by_us-dollar_growth_smooth10_unit'
     """
     plot_text = name_column(
@@ -141,7 +142,13 @@ def create_nice_plot_text(
 
     if text_type == "file_name":
         if diff_order > 0:
-            plot_text += "_smooth" + str(smooth_periods)
+            # make sure unit comes after smooth
+            if len(plot_text) > 5 and plot_text[-5:] == "_unit":
+                base = plot_text[:-5]
+                plot_text = base + "_smooth" + str(smooth_periods) + "_unit"
+            else:
+                plot_text += "_smooth" + str(smooth_periods)
+
     elif text_type == "plot_title":
         plot_text = " ".join(plot_text.split("_"))
     else:
