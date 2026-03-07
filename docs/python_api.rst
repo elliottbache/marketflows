@@ -5,4 +5,8 @@ Python API
    :toctree: _autosummary
    :recursive:
 
+   marketflows
+   marketflows.analysis
+   marketflows.plots
    marketflows.providers
+   marketflows.tutorial

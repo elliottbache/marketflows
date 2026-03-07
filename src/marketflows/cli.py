@@ -1,3 +1,7 @@
+"""Command-line interface for MarketFlows.
+
+Parses CLI flags, configures logging, resolves paths, and runs the pipeline.
+"""
 import argparse
 from collections.abc import Sequence
 from pathlib import Path
