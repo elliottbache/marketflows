@@ -7,6 +7,20 @@
 [![Release](https://img.shields.io/github/v/release/elliottbache/marketflows)](https://github.com/elliottbache/marketflows/releases)
 [![License: GPL-3.0](https://img.shields.io/badge/license-%20%20GNU%20GPLv3%20-green?style=plastic)](https://github.com/elliottbache/marketflows/blob/main/LICENSE)
 
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
+![pandas](https://img.shields.io/badge/pandas-data%20analysis-blue?logo=pandas&logoColor=white)
+![Matplotlib](https://img.shields.io/badge/Matplotlib-charts-blue)
+![Requests](https://img.shields.io/badge/Requests-HTTP%20API-blue)
+![TOML](https://img.shields.io/badge/config-TOML-blue)
+![CoinGecko](https://img.shields.io/badge/API-CoinGecko-blue)
+![Docker](https://img.shields.io/badge/Docker-Compose-blue?logo=docker&logoColor=white)
+![Make](https://img.shields.io/badge/Make-automation-blue)
+![pytest](https://img.shields.io/badge/tests-pytest-blue?logo=pytest&logoColor=white)
+![ruff](https://img.shields.io/badge/lint-ruff-blue)
+![black](https://img.shields.io/badge/format-black-blue)
+![mypy](https://img.shields.io/badge/types-mypy-blue)
+![Sphinx](https://img.shields.io/badge/docs-Sphinx-blue?logo=sphinx&logoColor=white)
+
 Track capital-flow and narrative rotation across markets.
 
 MarketFlows is a config-driven CLI that:
