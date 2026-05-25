@@ -28,6 +28,16 @@ MarketFlows is a config-driven CLI that:
 - aggregates by narratives / portfolios / market-cap ranges,
 - outputs charts and percent-gain tables as PNGs (a short report is planned later).
 
+## What this project demonstrates
+
+MarketFlows is a config-driven Python CLI that runs an end-to-end pipeline (provider → analysis → outputs). It shows practical backend-style skills: clean packaging, configuration validation, reliable API integration, and testable data processing with deterministic outputs.
+
+- Python 3.11 project packaged with a `src/` layout, CLI entrypoint (`argparse`), and Sphinx/ReadTheDocs docs.
+- TOML config parsing/validation (`tomllib`, `dataclasses`) with explicit defaults and guardrails (bounds, required sections, allowed enums).
+- External API integration with `requests.Session` (retry/rate-limit handling) and clear separation of secrets from code/config.
+- Data pipeline work with `pandas`/`numpy`: time alignment + interpolation, EMA/derivatives, and parameterized output generation.
+- Automated quality checks via `pytest` (incl. `pandas.testing`) and CI, with headless matplotlib rendering to PNGs.
+
 ## Samples
 ![Tutorial – Narratives](./docs/_static/tutorial_Narratives_MC_by_us-dollar.png)
 ![Tutorial – Narratives (EMA)](./docs/_static/tutorial_Narratives_MC_by_us-dollar_ema20.png)
