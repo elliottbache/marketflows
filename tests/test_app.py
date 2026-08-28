@@ -7,6 +7,30 @@ import pandas as pd
 import pytest
 
 from marketflows import app
+from marketflows.providers.base import ProviderData, ProviderWindow
+
+
+def _fake_provider(
+    *,
+    asset_mcs: dict[str, pd.DataFrame] | None = None,
+    symbols: dict[str, str] | None = None,
+    narrative_assets: dict[str, set[str]] | None = None,
+    freq: str = "5min",
+    min_timestamp: pd.Timestamp | None = None,
+    max_timestamp: pd.Timestamp | None = None,
+):
+    return SimpleNamespace(
+        load_data=lambda: ProviderData(
+            asset_mcs=asset_mcs or {},
+            symbols=symbols or {},
+            narrative_assets=narrative_assets or {},
+        ),
+        define_window=lambda: ProviderWindow(
+            freq=freq,
+            min_timestamp=min_timestamp or pd.Timestamp(0.0, unit="ms", tz="UTC"),
+            max_timestamp=max_timestamp or pd.Timestamp(1.0, unit="ms", tz="UTC"),
+        ),
+    )
 
 
 class TestRunPipeline:
@@ -76,7 +100,7 @@ class TestRunPipeline:
         )
         monkeypatch.setattr(app, "get_provider_credentials", lambda *_a, **_k: "KEY")
 
-        def fake_load_coingecko_data(*, api_key: str, provider_config):
+        def fake_create_provider(*, api_key: str, provider_config):
             assert api_key == "KEY"
             calls["load_data"] += 1
             asset_mcs = {
@@ -84,14 +108,13 @@ class TestRunPipeline:
             }
             symbols = {"nvidia": "nvda"}
             narrative_assets = {"ai": {"nvidia"}}
-            return asset_mcs, symbols, narrative_assets
+            return _fake_provider(
+                asset_mcs=asset_mcs,
+                symbols=symbols,
+                narrative_assets=narrative_assets,
+            )
 
-        monkeypatch.setattr(app, "load_coingecko_data", fake_load_coingecko_data)
-        monkeypatch.setattr(
-            app,
-            "define_frequency_min_and_max_timestamp",
-            lambda _pc: ("5min", 0.0, 1.0),
-        )
+        monkeypatch.setattr(app, "create_provider", fake_create_provider)
 
         def fake_create_master_df(
             asset_mcs, *, freq: str, min_timestamp: float, max_timestamp: float
@@ -146,13 +169,11 @@ class TestRunPipeline:
         monkeypatch.setattr(app, "get_provider_credentials", lambda *_a, **_k: "KEY")
         monkeypatch.setattr(
             app,
-            "load_coingecko_data",
-            lambda **_k: ({}, {"ai": "AI"}, {"ai": {"nvidia"}, "pharma": {"tesla"}}),
-        )
-        monkeypatch.setattr(
-            app,
-            "define_frequency_min_and_max_timestamp",
-            lambda _pc: ("5min", 0.0, 1.0),
+            "create_provider",
+            lambda **_k: _fake_provider(
+                symbols={"ai": "AI"},
+                narrative_assets={"ai": {"nvidia"}, "pharma": {"tesla"}},
+            ),
         )
         monkeypatch.setattr(app, "create_master_df", lambda *_a, **_k: df_master)
 
@@ -194,12 +215,7 @@ class TestRunPipeline:
             lambda _p: (provider_config, analysis_config, plot_config),
         )
         monkeypatch.setattr(app, "get_provider_credentials", lambda *_a, **_k: "KEY")
-        monkeypatch.setattr(app, "load_coingecko_data", lambda **_k: ({}, {}, {}))
-        monkeypatch.setattr(
-            app,
-            "define_frequency_min_and_max_timestamp",
-            lambda _pc: ("5min", 0.0, 1.0),
-        )
+        monkeypatch.setattr(app, "create_provider", lambda **_k: _fake_provider())
         monkeypatch.setattr(app, "create_master_df", lambda *_a, **_k: df_master)
 
         seen_analyze: list[dict[str, object]] = []
@@ -248,12 +264,7 @@ class TestRunPipeline:
             lambda _p: (provider_config, analysis_config, plot_config),
         )
         monkeypatch.setattr(app, "get_provider_credentials", lambda *_a, **_k: "KEY")
-        monkeypatch.setattr(app, "load_coingecko_data", lambda **_k: ({}, {}, {}))
-        monkeypatch.setattr(
-            app,
-            "define_frequency_min_and_max_timestamp",
-            lambda _pc: ("5min", 0.0, 1.0),
-        )
+        monkeypatch.setattr(app, "create_provider", lambda **_k: _fake_provider())
         monkeypatch.setattr(app, "create_master_df", lambda *_a, **_k: df_master)
 
         monkeypatch.setattr(app, "prepare_cap_ranges", lambda **_k: df_long)
@@ -324,7 +335,7 @@ class TestRunPipeline:
 
         # In tutorial mode we must NOT touch secrets/provider network
         monkeypatch.setattr(app, "get_provider_credentials", _should_not_be_called)
-        monkeypatch.setattr(app, "load_coingecko_data", _should_not_be_called)
+        monkeypatch.setattr(app, "create_provider", _should_not_be_called)
 
         # Provide tutorial data
         tutorial_data = SimpleNamespace(

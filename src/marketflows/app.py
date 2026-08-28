@@ -27,10 +27,8 @@ from marketflows.config import (
 )
 from marketflows.plots.charts import plot_charts
 from marketflows.plots.tables import create_category_tables
-from marketflows.providers.coingecko import (
-    define_frequency_min_and_max_timestamp,
-    load_coingecko_data,
-)
+from marketflows.providers.coingecko import define_frequency_min_and_max_timestamp
+from marketflows.providers.factory import create_provider
 from marketflows.tutorial.data import load_tutorial_data, tutorial_config_path
 from marketflows.types import FlowType
 
@@ -88,13 +86,17 @@ def run_pipeline(
                 f"API key was not correctly read from: {secrets_path}."
             )
 
-        asset_mcs, symbols, narrative_assets = load_coingecko_data(
-            api_key=api_key, provider_config=provider_config
-        )
+        provider = create_provider(api_key=api_key, provider_config=provider_config)
+        provider_data = provider.load_data()
+        provider_window = provider.define_window()
 
-        freq, min_timestamp, max_timestamp = define_frequency_min_and_max_timestamp(
-            provider_config
-        )
+        asset_mcs = provider_data.asset_mcs
+        symbols = provider_data.symbols
+        narrative_assets = provider_data.narrative_assets
+
+        freq = provider_window.freq
+        min_timestamp = provider_window.min_timestamp
+        max_timestamp = provider_window.max_timestamp
 
     df_master = create_master_df(
         asset_mcs, freq=freq, min_timestamp=min_timestamp, max_timestamp=max_timestamp

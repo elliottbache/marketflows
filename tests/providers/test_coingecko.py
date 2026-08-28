@@ -166,9 +166,12 @@ def test_load_coingecko_data(
         range_lower_limits=range_lower_limits,
         asset_groups=coin_groups_mod,
     )
-    coin_mcs, symbols, narrative_coins = coingecko.load_coingecko_data(
+    provider_data = coingecko.load_coingecko_data(
         api_key=coingecko_api_key, provider_config=provider_config
     )
+    coin_mcs = provider_data.asset_mcs
+    symbols = provider_data.symbols
+    narrative_coins = provider_data.narrative_assets
 
     # check function outputs
     assert len(coin_mcs) == len(final_list)

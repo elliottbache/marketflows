@@ -10,6 +10,7 @@ import pandas as pd
 import requests
 
 from marketflows.config import ProviderConfig
+from marketflows.providers.base import ProviderData, ProviderWindow
 
 COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/coins"
 _MAX_COINS_PER_PAGE = 250  # maximum possible on CoinGecko
@@ -40,11 +41,31 @@ class GetValues:
 logger = logging.getLogger(__name__)
 
 
+class CoingeckoProvider:
+    def __init__(self, *, api_key: str, provider_config: ProviderConfig) -> None:
+        self.api_key = api_key
+        self.provider_config = provider_config
+
+    def load_data(self) -> ProviderData:
+        provider_data = load_coingecko_data(
+            api_key=self.api_key, provider_config=self.provider_config
+        )
+        return provider_data
+
+    def define_window(self) -> ProviderWindow:
+        freq, min_timestamp, max_timestamp = define_frequency_min_and_max_timestamp(
+            self.provider_config
+        )
+        return ProviderWindow(
+            freq=freq, min_timestamp=min_timestamp, max_timestamp=max_timestamp
+        )
+
+
 def load_coingecko_data(
     *,
     api_key: str,
     provider_config: ProviderConfig,
-) -> tuple[dict[str, pd.DataFrame], dict[str, str], dict[str, set[str]]]:
+) -> ProviderData:
     """Entrypoint for all CoinGecko data querying.
 
     This will query CoinGecko for all the necessary chart data.
@@ -130,7 +151,11 @@ def load_coingecko_data(
             time_and_mcs = _create_df_from_chart_data(coin_data_dict)
             coin_mcs[coin] = _remove_faulty_data(time_and_mcs)
 
-    return coin_mcs, symbols, all_narrative_coins
+    return ProviderData(
+        asset_mcs=coin_mcs,
+        symbols=symbols,
+        narrative_assets=all_narrative_coins,
+    )
 
 
 def _parse_coins_from_groups(coin_groups: dict[str, set[str]]) -> set[str]:
